@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="66dp"
+    android:height="66dp"
+    android:viewportWidth="66"
+    android:viewportHeight="66">
+    <group android:translateX="-21" android:translateY="-21">
+        <path
+            android:pathData="@string/tapwell_mark_loop"
+            android:strokeColor="@color/tapwell_lime"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:fillColor="@color/tapwell_lime"
+            android:pathData="@string/tapwell_mark_dot" />
+    </group>
+</vector>

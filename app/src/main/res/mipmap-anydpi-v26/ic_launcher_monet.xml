@@ -1,0 +1,5 @@
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/tapwell_monet_background" />
+    <foreground android:drawable="@drawable/ic_tapwell_monet_foreground" />
+    <monochrome android:drawable="@drawable/ic_tapwell_monet_foreground" />
+</adaptive-icon>

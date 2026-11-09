@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Tapwell</string>
+    <string name="focus_service_label">Tapwell app blocker</string>
+    <string name="focus_service_summary">Lock chosen apps and the YouTube Shorts player.</string>
+    <string name="focus_service_description">Tapwell uses the foreground app name to enforce your locks and reads YouTube’s visible controls to identify the Shorts player. Tapwell does not save screen contents or send them off your device.</string>
+    <style name="Theme.Tapwell" parent="android:style/Theme.DeviceDefault.DayNight">
+        <item name="android:windowBackground">?android:attr/colorBackground</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+    <style name="Theme.Tapwell.Reminder" parent="Theme.Tapwell">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+</resources>
