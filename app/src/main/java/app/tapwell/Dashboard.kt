@@ -181,11 +181,17 @@ private fun FocusPage(activity: MainActivity, now: Long, blocker: Boolean, onSet
                         Text(if (limit > 0) "$status · $limit min daily limit" else status)
                     },
                     trailingContent = {
-                        Column(horizontalAlignment = Alignment.End) {
-                            TextButton(onClick = { limitTarget = target }) { Text("Daily limit") }
-                            TextButton(onClick = {
-                                if (removal > 0) store.cancelRemoval(target) else removeTarget = target to name
-                            }) { Text(if (removal > 0) "Cancel" else "Remove") }
+                        val padding = PaddingValues(horizontal = 8.dp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { limitTarget = target }, contentPadding = padding) {
+                                Text("Daily limit", maxLines = 1)
+                            }
+                            TextButton(
+                                onClick = {
+                                    if (removal > 0) store.cancelRemoval(target) else removeTarget = target to name
+                                },
+                                contentPadding = padding
+                            ) { Text(if (removal > 0) "Cancel" else "Remove", maxLines = 1) }
                         }
                     },
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
@@ -264,13 +270,38 @@ private fun ActivityPage(activity: MainActivity, now: Long) {
     val revision by store.revision.collectAsState()
     var days by rememberSaveable { mutableStateOf(1) }
     val today = localDay(now, ZoneId.systemDefault())
-    val totals = remember(today, days, revision) { store.activityCounts(today, days) }
+    val history = remember(today, days, revision) {
+        (days - 1 downTo 0).associate { offset ->
+            val date = today.minusDays(offset.toLong())
+            date to store.activityCounts(date)
+        }
+    }
+    val totals = remember(history) {
+        val counts = mutableMapOf<String, MutableMap<ActivityCount, Int>>()
+        for (day in history.values) {
+            for ((id, activity) in day) {
+                val total = counts.getOrPut(id) { mutableMapOf() }
+                for ((metric, count) in activity) total[metric] = (total[metric] ?: 0) + count
+            }
+        }
+        counts
+    }
     PageHeading("Activity", "See what happened when Tapwell prompted you.")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(days == 1, { days = 1 }, label = { Text("Today") })
         FilterChip(days == 7, { days = 7 }, label = { Text("Last 7 days") })
     }
     Text("Focus apps", style = MaterialTheme.typography.titleLarge)
+    val colors = MaterialTheme.colorScheme
+    ActivityChart(
+        title = "Focus activity",
+        history = history,
+        metrics = listOf(
+            ChartMetric(ActivityCount.FOCUS_PROMPT, "Prompts", colors.primary),
+            ChartMetric(ActivityCount.FOCUS_LEFT, "Left", colors.tertiary),
+            ChartMetric(ActivityCount.FOCUS_OPENED, "Opened", colors.secondary)
+        )
+    )
     val targets = store.locks(now) + totals.filterValues { ActivityCount.FOCUS_PROMPT in it }.keys
     for (target in targets.sortedBy { targetLabel(activity, it).lowercase() }) {
         val counts = totals[target].orEmpty()
@@ -285,6 +316,15 @@ private fun ActivityPage(activity: MainActivity, now: Long) {
         }
     }
     Text("Habits", style = MaterialTheme.typography.titleLarge)
+    ActivityChart(
+        title = "Habit activity",
+        history = history,
+        metrics = listOf(
+            ChartMetric(ActivityCount.HABIT_ALERT, "Alerts", colors.primary),
+            ChartMetric(ActivityCount.HABIT_DONE, "Logged", colors.tertiary),
+            ChartMetric(ActivityCount.HABIT_EARLY, "Logged early", colors.secondary)
+        )
+    )
     for (habit in store.habits()) {
         val counts = totals[habit.id].orEmpty()
         Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.large) {

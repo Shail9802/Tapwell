@@ -48,7 +48,7 @@ Tapwell requires Android 12 or later and an NFC-capable phone.
 - **Manage tags.** Use **Setup → NFC tags** for Focus, Water, and Stand. Use **Manage tags** on an NFC habit card for that habit. Any paired tag works for its task. Adding, removing, or replacing tags on a paired task requires scanning one of its current tags.
 - **Log between reminders.** Scan a paired habit tag or tap **Mark done** for a habit that uses manual logging. Confirm to log the habit and restart its interval. Paired Tapwell text tags also work from the unlocked Home screen. Water reminders stop at your goal, and you can still log extra drinks.
 - **Meal snooze.** Open **Setup → Meal snooze** to enable or edit quiet windows. Lunch defaults to 12:30–14:00 and dinner to 19:30–21:30. Due alerts wait until the window ends.
-- **Activity dashboard.** Open **Activity** to see Focus prompts, exits, and app launches, along with habit alerts and completions for today or the last seven days. Counts start with Tapwell 2.0 and stay on this phone.
+- **Activity dashboard.** Open **Activity** to chart Focus prompts, exits, and app launches, along with habit alerts and completions. Choose **Today** for totals or tap a day in **Last 7 days** for that day’s counts. Counts start with Tapwell 2.0 and stay on this phone.
 - **Daily focus limits.** Choose **Daily limit** next to a locked app and grant Android Usage access. Enter a daily allowance in minutes. The limit uses total foreground time for the app, including total YouTube time for the Shorts rule. Tapwell cannot read the configured timer from Digital Wellbeing, so enter the same number of minutes to mirror it.
 
 ## Google Cloud setup for this build

@@ -329,20 +329,18 @@ internal class Store private constructor(context: Context) {
         prefs.edit().putActivity(target, listOf(count), now).apply()
     }
 
-    fun activityCounts(today: LocalDate, days: Int): Map<String, Map<ActivityCount, Int>> {
-        val totals = mutableMapOf<String, MutableMap<ActivityCount, Int>>()
-        repeat(days) { offset ->
-            val key = "activity_${today.minusDays(offset.toLong())}"
-            val day = JSONObject(prefs.getString(key, null) ?: "{}")
+    fun activityCounts(date: LocalDate): Map<String, Map<ActivityCount, Int>> {
+        val day = JSONObject(prefs.getString("activity_$date", null) ?: "{}")
+        return buildMap {
             for (id in day.keys()) {
                 val entry = day.optJSONObject(id) ?: continue
-                val total = totals.getOrPut(id) { mutableMapOf() }
-                for (count in ActivityCount.entries) {
-                    if (entry.has(count.name)) total[count] = (total[count] ?: 0) + entry.optInt(count.name)
-                }
+                put(id, buildMap {
+                    for (count in ActivityCount.entries) {
+                        if (entry.has(count.name)) put(count, entry.optInt(count.name))
+                    }
+                })
             }
         }
-        return totals
     }
 
     private fun SharedPreferences.Editor.putActivity(
