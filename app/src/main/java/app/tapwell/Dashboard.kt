@@ -286,12 +286,14 @@ private fun ActivityPage(activity: MainActivity, now: Long) {
         }
         counts
     }
-    PageHeading("Activity", "See what happened when Tapwell prompted you.")
+    PageHeading("Activity", "See screen time, Focus activity, and habit logs.")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(days == 1, { days = 1 }, label = { Text("Today") })
         FilterChip(days == 7, { days = 7 }, label = { Text("Last 7 days") })
     }
     Text("Focus apps", style = MaterialTheme.typography.titleLarge)
+    val lockedTargets = store.locks(now)
+    FocusUsageCharts(activity, lockedTargets, history.keys.toList(), now)
     val colors = MaterialTheme.colorScheme
     ActivityChart(
         title = "Focus activity",
@@ -302,7 +304,7 @@ private fun ActivityPage(activity: MainActivity, now: Long) {
             ChartMetric(ActivityCount.FOCUS_OPENED, "Opened", colors.secondary)
         )
     )
-    val targets = store.locks(now) + totals.filterValues { ActivityCount.FOCUS_PROMPT in it }.keys
+    val targets = lockedTargets + totals.filterValues { ActivityCount.FOCUS_PROMPT in it }.keys
     for (target in targets.sortedBy { targetLabel(activity, it).lowercase() }) {
         val counts = totals[target].orEmpty()
         Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.large) {

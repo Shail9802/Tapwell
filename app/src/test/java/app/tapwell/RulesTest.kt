@@ -15,6 +15,21 @@ class RulesTest {
     private val morning = Instant.parse("2026-11-09T03:30:00Z").toEpochMilli()
 
     @Test
+    fun foregroundTimeCountsOverlappingActivitiesOnceAndClipsToMidnight() {
+        val time = ForegroundTime(1_000)
+        time.resume("feed", 500)
+        time.resume("video", 1_100)
+        time.pause("feed", 1_200)
+        time.stop(1_500)
+        time.pause("video", 1_550)
+        assertEquals(500L, time.used)
+
+        time.resume("feed", 1_600)
+        time.pause("feed", 1_800)
+        assertEquals(700L, time.used)
+    }
+
+    @Test
     fun chimeBoostsLowVolumeAndSoftensMaximumVolume() {
         assertEquals(28, chimeGainHalfDecibels(-55f))
         assertEquals(10, chimeGainHalfDecibels(-20f))
