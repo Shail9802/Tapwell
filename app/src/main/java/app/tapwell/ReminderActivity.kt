@@ -101,7 +101,7 @@ internal class ReminderActivity : TapActivity() {
         val ready = nfcReady()
         LaunchedEffect(habit?.id, needsNfc, locked, ready, test) {
             cancelScan()
-            if (habit != null && needsNfc && !locked && ready) log(habit, inlinePrompt = true, test = test, onSuccess = ::next)
+            if (habit != null && needsNfc && !locked && ready) log(habit, fromReminder = true, test = test, onSuccess = ::next)
         }
         BackHandler(onBack = ::next)
         Box(
@@ -170,7 +170,7 @@ internal class ReminderActivity : TapActivity() {
                         )
                         active && test -> Button(onClick = ::next, modifier = Modifier.fillMaxWidth()) { Text("Done") }
                         active -> Button(
-                            onClick = { log(habit, onSuccess = ::next) },
+                            onClick = { log(habit, fromReminder = true, onSuccess = ::next) },
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Mark done") }
                     }

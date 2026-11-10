@@ -11,19 +11,23 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 
-/** A scan outside a reminder provides proof of the tag, then asks before logging. */
+/** Confirms an early or manual log, with a scanned tag when the habit requires one. */
 class HabitTapActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val store = Store.get(this)
         val habit = intent.getStringExtra("habit")?.let(store::habit)
-        val tag = ScannedTag(intent.getStringExtra("uid"), intent.getStringExtra("code"))
-        if (habit == null || !validTap() || !store.matches(habit.tagSlot, tag)) {
+        val tag = ScannedTag(intent.getStringExtra("uid"), intent.getStringExtra("code")).takeIf { it.identity != null }
+        if (habit == null || !validRequest() || !store.canConfirmHabitLog(habit, tag)) {
             finish()
             return
         }
         val settings = store.habitSettings(habit)
-        val title = if (habit == Habit.WATER) "Log a drink?" else "Log ${habit.title}?"
+        val title = when (habit) {
+            Habit.WATER -> "Log a drink?"
+            Habit.STAND -> "Log a stand break?"
+            else -> "Log ${habit.title}?"
+        }
         val detail = when {
             habit != Habit.WATER -> "Mark this habit done and restart its reminder interval."
             store.habitState(habit).loggedMl + settings.servingMl >= settings.goalMl -> "Add ${settings.servingMl} mL to today’s total."
@@ -38,11 +42,11 @@ class HabitTapActivity : ComponentActivity() {
                     confirmButton = {
                         TextButton(onClick = {
                             if (isFinishing) return@TextButton
-                            if (validTap() && store.logHabit(habit, tag, confirmedTap = true)) {
+                            if (validRequest() && store.logHabit(habit, tag, confirmedOutsideReminder = true)) {
                                 Reminders.reconcile(this)
                                 Toast.makeText(this, if (habit == Habit.WATER) "Drink logged" else "Habit logged", Toast.LENGTH_SHORT).show()
                             } else {
-                                Toast.makeText(this, "This scan can no longer log the habit.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, "This request can no longer log the habit.", Toast.LENGTH_SHORT).show()
                             }
                             finish()
                         }) { Text(if (habit == Habit.WATER) "Log drink" else "Log habit") }
@@ -53,16 +57,16 @@ class HabitTapActivity : ComponentActivity() {
         }
     }
 
-    private fun validTap(): Boolean =
+    private fun validRequest(): Boolean =
         SystemClock.elapsedRealtime() - intent.getLongExtra("scanned_at", -MINUTE) in 0 until MINUTE
 
     companion object {
-        internal fun prompt(context: Context, habit: Habit, tag: ScannedTag) {
+        internal fun prompt(context: Context, habit: Habit, tag: ScannedTag?) {
             context.startActivity(Intent(context, HabitTapActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .putExtra("habit", habit.id)
-                .putExtra("uid", tag.uid)
-                .putExtra("code", tag.code)
+                .putExtra("uid", tag?.uid)
+                .putExtra("code", tag?.code)
                 .putExtra("scanned_at", SystemClock.elapsedRealtime()))
         }
     }

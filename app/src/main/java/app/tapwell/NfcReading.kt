@@ -55,7 +55,7 @@ class TagNoticeActivity : Activity() {
                 NfcAdapter.getDefaultAdapter(this)?.ignore(tag, TAG_REMOVAL_DEBOUNCE_MS, null, null)
                 val fresh = TagScanFeedback.show(this, reading, feedback, passive = true)
                 if (fresh && habit != null && slot == habit.tagSlot &&
-                    store.canConfirmHabitTap(habit)
+                    store.canConfirmHabitLog(habit, reading)
                 ) {
                     HabitTapActivity.prompt(this, habit, reading)
                 }

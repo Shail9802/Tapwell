@@ -188,7 +188,7 @@ internal abstract class TapActivity : ComponentActivity() {
         }
     }
 
-    fun log(habit: Habit, inlinePrompt: Boolean = false, test: Boolean = false, onSuccess: () -> Unit = {}) {
+    fun log(habit: Habit, fromReminder: Boolean = false, test: Boolean = false, onSuccess: () -> Unit = {}) {
         fun complete(tag: ScannedTag?): String? {
             if (test) {
                 if (tag == null) notice("Test scan matched")
@@ -208,20 +208,21 @@ internal abstract class TapActivity : ComponentActivity() {
             return null
         }
 
+        fun confirm(tag: ScannedTag?): String? {
+            if (!store.canConfirmHabitLog(habit, tag)) return "This habit is paused or unavailable."
+            HabitTapActivity.prompt(this, habit, tag)
+            return null
+        }
+
         if (!store.habitSettings(habit).needsNfc) {
-            complete(null)?.let(::notice)
+            val error = if (fromReminder || test) complete(null) else confirm(null)
+            error?.let(::notice)
             return
         }
-        scan(habit.tagSlot, "Scan ${habit.tagLabel} tag", "Hold your phone near any tag paired to this habit.", inlinePrompt) { tag ->
+        scan(habit.tagSlot, "Scan ${habit.tagLabel} tag", "Hold your phone near any tag paired to this habit.", fromReminder) { tag ->
             when {
                 !store.matches(habit.tagSlot, tag) -> "This tag isn’t paired to ${habit.tagLabel}."
-                !test && !inlinePrompt -> {
-                    if (!store.canConfirmHabitTap(habit)) "This reminder is paused or unavailable."
-                    else {
-                        HabitTapActivity.prompt(this, habit, tag)
-                        null
-                    }
-                }
+                !test && !fromReminder -> confirm(tag)
                 !test && store.habitState(habit).dueAt > System.currentTimeMillis() -> "This reminder is no longer due."
                 else -> complete(tag)
             }

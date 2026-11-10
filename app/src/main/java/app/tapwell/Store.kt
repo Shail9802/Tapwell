@@ -297,21 +297,21 @@ internal class Store private constructor(context: Context) {
         return state
     }
 
-    fun canConfirmHabitTap(habit: Habit, now: Long = System.currentTimeMillis()): Boolean {
+    fun canConfirmHabitLog(habit: Habit, tag: ScannedTag?, now: Long = System.currentTimeMillis()): Boolean {
         val settings = habitSettings(habit)
-        if (!settings.needsNfc || !habitReady(habit, settings)) return false
+        if (!settings.enabled || !acceptsCompletion(settings, tagEntries(habit.tagSlot).keys, tag)) return false
         val state = habitState(habit, now)
         return state.dueAt > 0 || habit == Habit.WATER && state.loggedMl >= settings.goalMl
     }
 
     fun logHabit(
-        habit: Habit, tag: ScannedTag?, now: Long = System.currentTimeMillis(), confirmedTap: Boolean = false
+        habit: Habit, tag: ScannedTag?, now: Long = System.currentTimeMillis(), confirmedOutsideReminder: Boolean = false
     ): Boolean {
         val current = habit(habit.id) ?: return false
         val settings = habitSettings(current)
         if (!settings.enabled || !acceptsCompletion(settings, tagEntries(current.tagSlot).keys, tag)) return false
         val state = habitState(current, now)
-        if (state.dueAt == 0L && !(confirmedTap && current == Habit.WATER && state.loggedMl >= settings.goalMl)) return false
+        if (state.dueAt == 0L && !(confirmedOutsideReminder && current == Habit.WATER && state.loggedMl >= settings.goalMl)) return false
         val counts = if (now < state.dueAt) listOf(ActivityCount.HABIT_DONE, ActivityCount.HABIT_EARLY)
             else listOf(ActivityCount.HABIT_DONE)
         prefs.edit().putHabit(current, completeHabit(current, settings, state, now))
