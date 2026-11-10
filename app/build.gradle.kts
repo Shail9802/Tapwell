@@ -13,8 +13,8 @@ android {
         applicationId = "app.tapwell"
         minSdk = 31
         targetSdk = 36
-        versionCode = 12
-        versionName = "1.9.2"
+        versionCode = 13
+        versionName = "2.0.0"
     }
 
     buildFeatures { compose = true }

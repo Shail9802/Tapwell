@@ -85,6 +85,7 @@ internal class PortableSetup(private val prefs: SharedPreferences) {
             val newLocks = lockSet(setup["locks"])
             for (target in (oldLocks - newLocks) + (newLocks - oldLocks)) {
                 for (kind in listOf("pass", "remove")) clearDeadline(edit, "${kind}_$target")
+                edit.remove("daily_limit_$target")
             }
         }
         if (old["work"] != setup["work"]) clearDeadline(edit, "work_pass")

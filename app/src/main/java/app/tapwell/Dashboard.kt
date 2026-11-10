@@ -24,6 +24,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
@@ -55,7 +56,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private enum class Tab(val title: String, val symbol: Symbol) {
-    FOCUS("Focus", Symbol.LOCK), HABITS("Habits", Symbol.HABITS), SETUP("Setup", Symbol.SETTINGS)
+    FOCUS("Focus", Symbol.LOCK), HABITS("Habits", Symbol.HABITS),
+    STATS("Activity", Symbol.TAP), SETUP("Setup", Symbol.SETTINGS)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,6 +107,7 @@ internal fun Dashboard(activity: MainActivity) {
                 when (tab) {
                     Tab.FOCUS -> FocusPage(activity, now, blocker, onSetup = { tab = Tab.SETUP })
                     Tab.HABITS -> HabitsPage(activity, now, notify, alarms, onSetup = { tab = Tab.SETUP }, manageTags = { tagSlot = it })
+                    Tab.STATS -> ActivityPage(activity, now)
                     Tab.SETUP -> SetupPage(activity, blocker, nfc, notify, alarms, popups, manageTags = { tagSlot = it })
                 }
                 Spacer(Modifier.padding(bottom = 4.dp))
@@ -127,6 +130,8 @@ private fun FocusPage(activity: MainActivity, now: Long, blocker: Boolean, onSet
     var workDialog by remember { mutableStateOf(false) }
     var durationDialog by remember { mutableStateOf(false) }
     var removeTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var addTarget by rememberSaveable { mutableStateOf<String?>(null) }
+    var limitTarget by rememberSaveable { mutableStateOf<String?>(null) }
 
     PageHeading("Focus", "Put a physical tap between you and the apps you want to spend less time in.")
     FeatureCard(
@@ -171,11 +176,17 @@ private fun FocusPage(activity: MainActivity, now: Long, blocker: Boolean, onSet
                 }
                 ListItem(
                     headlineContent = { Text(name) },
-                    supportingContent = { Text(status) },
+                    supportingContent = {
+                        val limit = store.dailyLimit(target)
+                        Text(if (limit > 0) "$status · $limit min daily limit" else status)
+                    },
                     trailingContent = {
-                        TextButton(onClick = {
-                            if (removal > 0) store.cancelRemoval(target) else removeTarget = target to name
-                        }) { Text(if (removal > 0) "Cancel" else "Remove") }
+                        Column(horizontalAlignment = Alignment.End) {
+                            TextButton(onClick = { limitTarget = target }) { Text("Daily limit") }
+                            TextButton(onClick = {
+                                if (removal > 0) store.cancelRemoval(target) else removeTarget = target to name
+                            }) { Text(if (removal > 0) "Cancel" else "Remove") }
+                        }
                     },
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                 )
@@ -195,8 +206,27 @@ private fun FocusPage(activity: MainActivity, now: Long, blocker: Boolean, onSet
     }
 
     if (showApps) AppPicker(activity, locks, dismiss = { showApps = false }) { target ->
-        store.addLock(target)
         showApps = false
+        addTarget = target
+    }
+    addTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { addTarget = null },
+            title = { Text("Lock ${targetLabel(activity, target)}?") },
+            text = {
+                Text("A Focus tag is required to open this app. Removing the rule also requires a tag and a two-hour wait. Keep any apps you need in an emergency accessible.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    store.addLock(target)
+                    addTarget = null
+                }) { Text("Add to Focus") }
+            },
+            dismissButton = { TextButton(onClick = { addTarget = null }) { Text("Cancel") } }
+        )
+    }
+    limitTarget?.let { target ->
+        DailyLimitDialog(activity, target, dismiss = { limitTarget = null })
     }
     if (durationDialog) DurationDialog(store.unlockMinutes(), dismiss = { durationDialog = false }) { minutes ->
         durationDialog = false
@@ -226,6 +256,49 @@ private fun FocusPage(activity: MainActivity, now: Long, blocker: Boolean, onSet
             dismissButton = { TextButton(onClick = { removeTarget = null }) { Text("Cancel") } }
         )
     }
+}
+
+@Composable
+private fun ActivityPage(activity: MainActivity, now: Long) {
+    val store = activity.store
+    val revision by store.revision.collectAsState()
+    var days by rememberSaveable { mutableStateOf(1) }
+    val today = localDay(now, ZoneId.systemDefault())
+    val totals = remember(today, days, revision) { store.activityCounts(today, days) }
+    PageHeading("Activity", "See what happened when Tapwell prompted you.")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(days == 1, { days = 1 }, label = { Text("Today") })
+        FilterChip(days == 7, { days = 7 }, label = { Text("Last 7 days") })
+    }
+    Text("Focus apps", style = MaterialTheme.typography.titleLarge)
+    val targets = store.locks(now) + totals.filterValues { ActivityCount.FOCUS_PROMPT in it }.keys
+    for (target in targets.sortedBy { targetLabel(activity, it).lowercase() }) {
+        val counts = totals[target].orEmpty()
+        Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.large) {
+            ListItem(
+                headlineContent = { Text(targetLabel(activity, target)) },
+                supportingContent = {
+                    Text("${counts[ActivityCount.FOCUS_PROMPT] ?: 0} prompts · ${counts[ActivityCount.FOCUS_LEFT] ?: 0} left · ${counts[ActivityCount.FOCUS_OPENED] ?: 0} opened")
+                },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+            )
+        }
+    }
+    Text("Habits", style = MaterialTheme.typography.titleLarge)
+    for (habit in store.habits()) {
+        val counts = totals[habit.id].orEmpty()
+        Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.large) {
+            ListItem(
+                headlineContent = { Text(habit.title) },
+                supportingContent = {
+                    Text("${counts[ActivityCount.HABIT_ALERT] ?: 0} alerts · ${counts[ActivityCount.HABIT_DONE] ?: 0} logged · ${counts[ActivityCount.HABIT_EARLY] ?: 0} logged early")
+                },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+            )
+        }
+    }
+    Text("Counts are kept on this phone. Opened counts launches from a Focus prompt. Alerts include repeats.",
+        style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable
@@ -320,7 +393,7 @@ private fun HabitCard(activity: MainActivity, habit: Habit, now: Long, onConfigu
             } else {
                 Button(
                     onClick = { activity.log(habit) },
-                    enabled = settings.enabled && state.dueAt != 0L,
+                    enabled = settings.enabled && (state.dueAt != 0L || habit == Habit.WATER),
                     modifier = Modifier.weight(1f)
                 ) { Text(if (settings.needsNfc) "Scan tag" else "Mark done") }
             }
@@ -341,12 +414,16 @@ private fun SetupPage(
     var appearance by rememberSaveable { mutableStateOf(false) }
     var alertSettings by rememberSaveable { mutableStateOf(false) }
     var googleSync by rememberSaveable { mutableStateOf(false) }
+    var mealSnoozes by rememberSaveable { mutableStateOf(false) }
     var about by rememberSaveable { mutableStateOf(false) }
     PageHeading("Setup", "Pair your tags and turn on the Android permissions Tapwell uses.")
     SetupRow("Appearance", "Choose Monet colors and your launcher icon.", "Open", false) { appearance = true }
     if (appearance) AppearanceDialog(activity, dismiss = { appearance = false })
     SetupRow("Reminder alerts", "Choose a gentle chime or vibration only, and send a test alert.", "Open", false) { alertSettings = true }
     if (alertSettings) ReminderAlertsDialog(activity, dismiss = { alertSettings = false })
+    SetupRow("Meal snooze", "Pause habit alerts during lunch and dinner.", "Open",
+        activity.store.mealSnoozes().any { it.enabled }) { mealSnoozes = true }
+    if (mealSnoozes) MealSnoozeDialog(activity, dismiss = { mealSnoozes = false })
     val connected = remember(revision) { activity.store.portableSetup.connected() }
     SetupRow("Google Drive sync", "Back up and restore your Tapwell setup across phones.", "Open", connected) { googleSync = true }
     if (googleSync) GoogleSyncDialog(activity, dismiss = { googleSync = false })

@@ -3,6 +3,7 @@ package app.tapwell
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -75,6 +76,91 @@ internal fun DurationDialog(value: Int, dismiss: () -> Unit, save: (Int) -> Unit
         confirmButton = { TextButton(onClick = { minutes?.let(save) }, enabled = minutes != null) { Text("Continue") } },
         dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } }
     )
+}
+
+@Composable
+internal fun DailyLimitDialog(activity: MainActivity, target: String, dismiss: () -> Unit) {
+    val store = activity.store
+    var value by rememberSaveable(target) { mutableStateOf(store.dailyLimit(target).toString()) }
+    val minutes = value.toIntOrNull()?.takeIf { it in 0..1440 }
+    val revision = activity.permissionRevision
+    val allowed = remember(revision) { FocusUsage.allowed(activity) }
+    AlertDialog(
+        onDismissRequest = dismiss,
+        title = { Text("Daily limit for ${targetLabel(activity, target)}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Tapwell counts Android foreground usage and blocks access once the limit is used. Enter the same number of minutes as your system timer if you want the limits to match.")
+                if (target == SHORTS) Text("This uses total YouTube time.")
+                NumberField(value, { value = it }, "Minutes per day", "0 turns off Tapwell’s daily limit")
+                if (!allowed) {
+                    TextButton(onClick = { activity.openSettings(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }) {
+                        Text("Open Usage access")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = minutes != null && (minutes == 0 || allowed), onClick = {
+                dismiss()
+                if (minutes != null && minutes != store.dailyLimit(target)) {
+                    if (store.hasTags(TagRole.FOCUS.slot)) {
+                        activity.scanRole(TagRole.FOCUS, "Verify Focus tag", "Scan your tag to change this daily limit.") {
+                            store.saveDailyLimit(target, minutes)
+                        }
+                    } else store.saveDailyLimit(target, minutes)
+                }
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+internal fun MealSnoozeDialog(activity: MainActivity, dismiss: () -> Unit) {
+    val store = activity.store
+    var windows by remember { mutableStateOf(Meal.entries.associateWith(store::mealSnooze)) }
+    var editing by remember { mutableStateOf<Pair<Meal, Boolean>?>(null) }
+    val valid = windows.values.all { !it.enabled || it.endMinute > it.startMinute }
+    AlertDialog(
+        onDismissRequest = dismiss,
+        title = { Text("Meal snooze") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Due reminders wait until the meal ends. You can still log a habit during a meal.")
+                for (meal in Meal.entries) {
+                    val window = windows.getValue(meal)
+                    ToggleRow(meal.title, window.enabled) { windows = windows + (meal to window.copy(enabled = it)) }
+                    if (window.enabled) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { editing = meal to true }) { Text("Starts ${clockLabel(window.startMinute)}") }
+                            TextButton(onClick = { editing = meal to false }) { Text("Ends ${clockLabel(window.endMinute)}") }
+                        }
+                    }
+                }
+                if (!valid) Text("End time must be after start time.", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = valid, onClick = {
+                store.saveMealSnoozes(windows)
+                Reminders.reconcile(activity)
+                dismiss()
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } }
+    )
+    editing?.let { (meal, start) ->
+        val window = windows.getValue(meal)
+        ClockDialog(
+            if (start) "${meal.title} starts" else "${meal.title} ends",
+            if (start) window.startMinute else window.endMinute,
+            dismiss = { editing = null }
+        ) { minute ->
+            windows = windows + (meal to if (start) window.copy(startMinute = minute) else window.copy(endMinute = minute))
+            editing = null
+        }
+    }
 }
 
 @Composable

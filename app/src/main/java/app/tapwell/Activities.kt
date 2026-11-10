@@ -213,8 +213,18 @@ internal abstract class TapActivity : ComponentActivity() {
             return
         }
         scan(habit.tagSlot, "Scan ${habit.tagLabel} tag", "Hold your phone near any tag paired to this habit.", inlinePrompt) { tag ->
-            if (!store.matches(habit.tagSlot, tag)) "This tag isn’t paired to ${habit.tagLabel}."
-            else complete(tag)
+            when {
+                !store.matches(habit.tagSlot, tag) -> "This tag isn’t paired to ${habit.tagLabel}."
+                !test && !inlinePrompt -> {
+                    if (!store.canConfirmHabitTap(habit)) "This reminder is paused or unavailable."
+                    else {
+                        HabitTapActivity.prompt(this, habit, tag)
+                        null
+                    }
+                }
+                !test && store.habitState(habit).dueAt > System.currentTimeMillis() -> "This reminder is no longer due."
+                else -> complete(tag)
+            }
         }
     }
 
@@ -339,21 +349,60 @@ internal class GateActivity : TapActivity() {
     private var working by mutableStateOf(false)
     private var error by mutableStateOf<String?>(null)
     private var locateJob: Job? = null
+    private var attemptRecorded = false
+    private var attemptPending = false
+    private var openingUsageSettings = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         target = intent.getStringExtra(EXTRA_TARGET).orEmpty()
+        attemptRecorded = savedInstanceState?.getBoolean("attempt_recorded") == true
+        attemptPending = savedInstanceState?.getBoolean("attempt_pending") == true
         setContent { TapTheme { key(target) { Gate() } } }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        openingUsageSettings = false
+        recordAttempt()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("attempt_recorded", attemptRecorded)
+        outState.putBoolean("attempt_pending", attemptPending)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onUserLeaveHint() {
+        if (!openingUsageSettings) finishAttempt(ActivityCount.FOCUS_LEFT)
+        super.onUserLeaveHint()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        val incoming = intent.getStringExtra(EXTRA_TARGET).orEmpty()
+        if (incoming == target && attemptPending) return
+        finishAttempt(ActivityCount.FOCUS_LEFT)
         cancelScan()
         locateJob?.cancel()
         working = false
         error = null
-        target = intent.getStringExtra(EXTRA_TARGET).orEmpty()
+        target = incoming
+        attemptRecorded = false
+    }
+
+    private fun recordAttempt() {
+        if (attemptRecorded || target !in store.locks()) return
+        store.recordFocus(target, ActivityCount.FOCUS_PROMPT)
+        attemptRecorded = true
+        attemptPending = true
+    }
+
+    private fun finishAttempt(outcome: ActivityCount) {
+        if (!attemptPending) return
+        attemptPending = false
+        store.recordFocus(target, outcome)
     }
 
     @Composable
@@ -362,7 +411,10 @@ internal class GateActivity : TapActivity() {
         val activeTarget = target
         val work = store.work()
         val window = workWindow(work, now, ZoneId.systemDefault())
-        val locked = activeTarget in store.locks(now) && store.accessLeft(activeTarget, now) == 0L
+        val ruleActive = activeTarget in store.locks(now)
+        val budget = if (ruleActive) FocusUsage.budget(this, activeTarget, store.dailyLimit(activeTarget), now)
+            else FocusBudget(Long.MAX_VALUE)
+        val locked = ruleActive && (budget.blocked != null || store.accessLeft(activeTarget, now) == 0L)
         val focusPaired = store.hasTags(TagRole.FOCUS.slot)
         val name = targetLabel(this, activeTarget)
         BackHandler { leaveTarget() }
@@ -370,26 +422,45 @@ internal class GateActivity : TapActivity() {
             symbol = Symbol.LOCK,
             eyebrow = "FOCUS LOCK",
             title = if (locked) "$name is locked" else "$name is available",
-            body = if (locked) "Scan your Focus tag to open a ${store.unlockMinutes()}-minute session."
+            body = budget.blocked ?: if (locked) "Scan your Focus tag to open a ${store.unlockMinutes()}-minute session."
                 else "You can continue to the app now."
         ) {
+            if (budget.blocked == null && budget.remaining != Long.MAX_VALUE) {
+                Text("Daily limit remaining · ${timeLeft(budget.remaining)}", style = MaterialTheme.typography.bodyMedium)
+            }
             Button(
                 modifier = Modifier.fillMaxWidth(),
+                enabled = budget.blocked == null || budget.needsPermission,
                 onClick = {
                     when {
+                        budget.needsPermission -> {
+                            openingUsageSettings = true
+                            openSettings(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                        }
                         !locked -> openTarget()
                         !focusPaired -> {
+                            finishAttempt(ActivityCount.FOCUS_LEFT)
                             startActivity(Intent(this, MainActivity::class.java))
                             finishAndRemoveTask()
                         }
                         else -> scanRole(TagRole.FOCUS, "Scan Focus tag", "Hold your phone against your Focus tag.") {
-                            store.unlock(activeTarget)
-                            openTarget()
+                            if (canOpenWithinBudget()) {
+                                store.unlock(activeTarget)
+                                openTarget()
+                            }
                         }
                     }
                 }
-            ) { Text(if (!locked) "Open $name" else if (focusPaired) "Scan Focus tag" else "Open Tapwell setup") }
-            if (locked && work.enabled && window != null) {
+            ) {
+                Text(when {
+                    budget.needsPermission -> "Open Usage access"
+                    budget.blocked != null -> "App unavailable"
+                    !locked -> "Open $name"
+                    focusPaired -> "Scan Focus tag"
+                    else -> "Open Tapwell setup"
+                })
+            }
+            if (locked && budget.blocked == null && work.enabled && window != null) {
                 val used = store.workBreakUsed(window)
                 TextButton(
                     onClick = { requestBreak(activeTarget, work) },
@@ -422,6 +493,7 @@ internal class GateActivity : TapActivity() {
                     error = when {
                         fix == null -> "Couldn’t get a precise location. Check location settings and try again."
                         !atWork(work, fix) -> "Tapwell couldn’t verify that you’re within the saved work area."
+                        !canOpenWithinBudget() -> error
                         !store.startWorkBreak(work, System.currentTimeMillis()) -> "This work break is no longer available."
                         else -> {
                             openTarget()
@@ -435,15 +507,33 @@ internal class GateActivity : TapActivity() {
         }
     }
 
+    private fun canOpenWithinBudget(): Boolean {
+        if (target !in store.locks()) return true
+        val budget = FocusUsage.budget(this, target, store.dailyLimit(target), System.currentTimeMillis(), fresh = true)
+        if (budget.blocked == null) return true
+        error = budget.blocked
+        return false
+    }
+
     private fun openTarget() {
-        val pkg = if (target == SHORTS) YOUTUBE else target
-        packageManager.getLaunchIntentForPackage(pkg)?.let {
-            startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        if (!canOpenWithinBudget()) return
+        val launch = packageManager.getLaunchIntentForPackage(focusPackage(target))
+        if (launch == null) {
+            error = "This app is unavailable."
+            return
         }
+        try {
+            startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: android.content.ActivityNotFoundException) {
+            error = "This app is unavailable."
+            return
+        }
+        finishAttempt(ActivityCount.FOCUS_OPENED)
         finishAndRemoveTask()
     }
 
     private fun leaveTarget() {
+        finishAttempt(ActivityCount.FOCUS_LEFT)
         if (target != SHORTS) {
             startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }

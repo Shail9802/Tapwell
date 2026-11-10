@@ -35,6 +35,7 @@ internal object Reminders {
         val notifications = context.getSystemService(NotificationManager::class.java)
         val now = System.currentTimeMillis()
         val zone = ZoneId.systemDefault()
+        val snoozes = store.mealSnoozes()
         val popups = arrayListOf<String>()
         for (habit in store.habits()) {
             val settings = store.habitSettings(habit)
@@ -45,13 +46,14 @@ internal object Reminders {
                 continue
             }
             val state = store.habitState(habit, now)
-            var trigger = reminderTrigger(settings, state)
+            var trigger = deferReminder(reminderTrigger(settings, state), now, snoozes, zone)
             if (state.sentAt == 0L) notifications.cancel(notificationTag(habit), notificationId(habit))
             if (trigger in 1..now) {
                 if (notificationsAllowed(context)) {
-                    if (notify(context, notifications, habit, settings, state)) popups.add(habit.id)
-                    store.markReminderSent(habit, state, now)
-                    trigger = reminderTrigger(settings, state.copy(sentAt = now))
+                    val importance = notify(context, notifications, habit, settings, state)
+                    if (importance >= NotificationManager.IMPORTANCE_DEFAULT) popups.add(habit.id)
+                    store.markReminderSent(habit, state, now, posted = importance > NotificationManager.IMPORTANCE_NONE)
+                    trigger = deferReminder(reminderTrigger(settings, state.copy(sentAt = now)), now, snoozes, zone)
                 } else {
                     trigger = now + DEFAULT_RETRY_MINUTES * MINUTE
                 }
@@ -124,7 +126,10 @@ internal object Reminders {
         val state = store.habitState(habit, now)
         if (!store.habitReady(habit, settings) || !hasPendingAlert(state, now)) return
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (notify(context, manager, habit, settings, state, restored = true)) {
+        val importance = notify(context, manager, habit, settings, state, restored = true)
+        if (importance >= NotificationManager.IMPORTANCE_DEFAULT &&
+            snoozedUntil(store.mealSnoozes(), now, ZoneId.systemDefault()) == 0L
+        ) {
             showPopup(context, manager, reminderScreen(context).putExtra(ReminderActivity.EXTRA_HABIT, habit.id))
         }
     }
@@ -160,7 +165,7 @@ internal object Reminders {
         settings: HabitSettings,
         state: HabitState,
         restored: Boolean = false
-    ): Boolean {
+    ): Int {
         val channel = ReminderAlerts.channel(context, manager, habit)
         val open = PendingIntent.getActivity(
             context, requestCode(habit),
@@ -187,7 +192,7 @@ internal object Reminders {
             keepWaterAlert(alert, open, dismissIntent(context, dismiss), restored)
         }
         manager.notify(notificationTag(habit), notificationId(habit), alert.build())
-        return channel.importance >= NotificationManager.IMPORTANCE_DEFAULT
+        return channel.importance
     }
 
     private fun notification(context: Context, channel: String, title: String, body: String, open: PendingIntent) =

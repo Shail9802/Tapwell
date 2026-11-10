@@ -21,12 +21,13 @@ internal object TagScanFeedback {
     private var previousIdentity: String? = null
     private var previousScanAt = 0L
 
-    fun show(context: Context, tag: ScannedTag, message: String, passive: Boolean = false) {
+    fun show(context: Context, tag: ScannedTag, message: String, passive: Boolean = false): Boolean {
         val now = SystemClock.elapsedRealtime()
         val duplicate = passive && tag.identity == previousIdentity && now - previousScanAt < 1_500
         previousIdentity = tag.identity
         previousScanAt = now
         if (!duplicate) Toast.makeText(context.applicationContext, message, Toast.LENGTH_SHORT).show()
+        return !duplicate
     }
 }
 
@@ -42,15 +43,22 @@ class TagNoticeActivity : Activity() {
                     ?.singleOrNull() as? NdefMessage
             val reading = readNfcTag(tag, message)
             val store = Store.get(this)
-            val slots = TagRole.entries.map { it.slot } + store.habits().filter { it.role == null }.map { it.tagSlot }
-            val feedback = slots.firstNotNullOfOrNull { slot ->
-                store.pairedLabel(slot, reading)?.let { tagScanMessage(slot, it) }
-            } ?: if (reading.code != null) "Unpaired Tapwell Tag" else null
+            val habits = store.habits()
+            val focus = TagRole.FOCUS.slot
+            val habit = habits.firstOrNull { store.matches(it.tagSlot, reading) }
+            val slot = if (store.matches(focus, reading)) focus else habit?.tagSlot
+            val feedback = slot?.let { tagScanMessage(it, store.pairedLabel(it, reading)) }
+                ?: if (reading.code != null) "Unpaired Tapwell Tag" else null
             if (feedback == null) {
                 openStockViewer(tag, message)
             } else {
                 NfcAdapter.getDefaultAdapter(this)?.ignore(tag, TAG_REMOVAL_DEBOUNCE_MS, null, null)
-                TagScanFeedback.show(this, reading, feedback, passive = true)
+                val fresh = TagScanFeedback.show(this, reading, feedback, passive = true)
+                if (fresh && habit != null && slot == habit.tagSlot &&
+                    store.canConfirmHabitTap(habit)
+                ) {
+                    HabitTapActivity.prompt(this, habit, reading)
+                }
             }
         } catch (_: BadParcelableException) {
             // A malformed NFC intent has no tag to display.

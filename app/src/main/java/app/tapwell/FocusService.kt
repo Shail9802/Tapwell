@@ -53,8 +53,11 @@ class FocusService : AccessibilityService() {
         }
         val left = store.accessLeft(target)
         if (left > 0) {
-            handler.postDelayed(expiry, left + 80)
-            return
+            val budget = FocusUsage.budget(this, target, store.dailyLimit(target), System.currentTimeMillis())
+            if (budget.blocked == null) {
+                handler.postDelayed(expiry, minOf(left, budget.remaining) + 80)
+                return
+            }
         }
         val now = SystemClock.elapsedRealtime()
         if (lastIntercept != Long.MIN_VALUE && now - lastIntercept < 500) {

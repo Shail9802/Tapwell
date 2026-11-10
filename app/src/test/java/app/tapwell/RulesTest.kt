@@ -138,6 +138,32 @@ class RulesTest {
     }
 
     @Test
+    fun mealSnoozeDefersNewAndOverdueAlertsWithoutChangingTheirDueTime() {
+        val lunch = Meal.LUNCH
+        val dinner = Meal.DINNER
+        val windows = listOf(MealSnooze(true, lunch.startMinute, lunch.endMinute),
+            MealSnooze(true, dinner.startMinute, dinner.endMinute))
+        fun at(hour: Int, minute: Int = 0) = monday.atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()
+        assertEquals(at(12, 29), deferReminder(at(12, 29), at(12), windows, zone))
+        assertEquals(at(14), deferReminder(at(12, 30), at(12), windows, zone))
+        assertEquals(at(14), deferReminder(at(12), at(13), windows, zone))
+        assertEquals(at(21, 30), deferReminder(at(20), at(19), windows, zone))
+        assertEquals(at(21, 30), deferReminder(at(21, 30), at(20), windows, zone))
+        assertEquals(0L, deferReminder(0, at(13), windows, zone))
+    }
+
+    @Test
+    fun earlyDrinkRestartsTheFullIntervalAndCountsOneServing() {
+        val settings = HabitSettings(enabled = true, minutes = 60, servingMl = 250)
+        val early = morning + 15 * MINUTE
+        val state = HabitState(monday, dueAt = morning + 60 * MINUTE)
+        val logged = completeHabit(Habit.WATER, settings, state, early)
+        assertEquals(250, logged.loggedMl)
+        assertEquals(early + 60 * MINUTE, logged.dueAt)
+        assertEquals(0L, logged.sentAt)
+    }
+
+    @Test
     fun overnightWorkWindowUsesTheDayItStartsAndEndsOnTime() {
         val settings = WorkSettings(enabled = true, days = 1, startMinute = 22 * 60, endMinute = 6 * 60)
         val start = Instant.parse("2026-11-09T16:30:00Z").toEpochMilli()

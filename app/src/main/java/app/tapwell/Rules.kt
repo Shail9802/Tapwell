@@ -135,6 +135,30 @@ internal fun reminderTrigger(settings: HabitSettings, state: HabitState): Long =
     else -> 0
 }
 
+internal enum class Meal(val title: String, val startMinute: Int, val endMinute: Int) {
+    LUNCH("Lunch", 12 * 60 + 30, 14 * 60),
+    DINNER("Dinner", 19 * 60 + 30, 21 * 60 + 30)
+}
+
+internal data class MealSnooze(val enabled: Boolean, val startMinute: Int, val endMinute: Int)
+
+internal fun snoozedUntil(windows: List<MealSnooze>, at: Long, zone: ZoneId): Long {
+    val local = Instant.ofEpochMilli(at).atZone(zone)
+    val date = local.toLocalDate()
+    return windows.filter { it.enabled }.mapNotNull { window ->
+        val start = date.atTime(window.startMinute / 60, window.startMinute % 60).atZone(zone).toInstant().toEpochMilli()
+        val end = date.atTime(window.endMinute / 60, window.endMinute % 60).atZone(zone).toInstant().toEpochMilli()
+        end.takeIf { at >= start && at < end }
+    }.maxOrNull() ?: 0L
+}
+
+internal fun deferReminder(trigger: Long, now: Long, windows: List<MealSnooze>, zone: ZoneId): Long =
+    if (trigger == 0L) 0L else maxOf(trigger, snoozedUntil(windows, maxOf(trigger, now), zone))
+
+internal enum class ActivityCount {
+    FOCUS_PROMPT, FOCUS_LEFT, FOCUS_OPENED, HABIT_ALERT, HABIT_DONE, HABIT_EARLY
+}
+
 internal fun hasPendingAlert(state: HabitState, now: Long): Boolean =
     state.sentAt > 0 && state.dueAt in 1..now
 

@@ -32,6 +32,35 @@ internal class Store private constructor(context: Context) {
         prefs.edit().putBoolean("reminder_chime", enabled).apply()
     }
 
+    fun mealSnooze(meal: Meal): MealSnooze {
+        val key = "snooze_${meal.name}"
+        return MealSnooze(
+            prefs.getBoolean("${key}_enabled", false),
+            prefs.getInt("${key}_start", meal.startMinute),
+            prefs.getInt("${key}_end", meal.endMinute)
+        )
+    }
+
+    fun mealSnoozes(): List<MealSnooze> = Meal.entries.map(::mealSnooze)
+
+    fun saveMealSnoozes(windows: Map<Meal, MealSnooze>) {
+        prefs.edit().apply {
+            for ((meal, window) in windows) {
+                val key = "snooze_${meal.name}"
+                putBoolean("${key}_enabled", window.enabled)
+                putInt("${key}_start", window.startMinute)
+                putInt("${key}_end", window.endMinute)
+            }
+        }.apply()
+    }
+
+    fun dailyLimit(target: String): Int = prefs.getInt("daily_limit_$target", 0)
+
+    fun saveDailyLimit(target: String, minutes: Int) {
+        if (target !in locks() || minutes !in 0..1440) return
+        prefs.edit().putInt("daily_limit_$target", minutes).apply()
+    }
+
     fun wallpaperColors(): Boolean = prefs.getBoolean("wallpaper_colors", true)
 
     fun setWallpaperColors(enabled: Boolean) {
@@ -102,7 +131,7 @@ internal class Store private constructor(context: Context) {
         if (expired.isEmpty()) return configured.toSet()
         val active = configured - expired.toSet()
         prefs.edit().putStringSet("locks", active).apply {
-            expired.forEach { clearDeadline("remove_$it").clearDeadline("pass_$it") }
+            expired.forEach { clearDeadline("remove_$it").clearDeadline("pass_$it").remove("daily_limit_$it") }
         }.apply()
         return active
     }
@@ -111,7 +140,7 @@ internal class Store private constructor(context: Context) {
         val active = locks()
         if (target in active) return
         prefs.edit().putStringSet("locks", active + target)
-            .clearDeadline("remove_$target").clearDeadline("pass_$target").apply()
+            .clearDeadline("remove_$target").clearDeadline("pass_$target").remove("daily_limit_$target").apply()
     }
 
     fun queueRemoval(target: String): Boolean {
@@ -268,18 +297,67 @@ internal class Store private constructor(context: Context) {
         return state
     }
 
-    fun logHabit(habit: Habit, tag: ScannedTag?, now: Long = System.currentTimeMillis()): Boolean {
+    fun canConfirmHabitTap(habit: Habit, now: Long = System.currentTimeMillis()): Boolean {
+        val settings = habitSettings(habit)
+        if (!settings.needsNfc || !habitReady(habit, settings)) return false
+        val state = habitState(habit, now)
+        return state.dueAt > 0 || habit == Habit.WATER && state.loggedMl >= settings.goalMl
+    }
+
+    fun logHabit(
+        habit: Habit, tag: ScannedTag?, now: Long = System.currentTimeMillis(), confirmedTap: Boolean = false
+    ): Boolean {
         val current = habit(habit.id) ?: return false
         val settings = habitSettings(current)
         if (!settings.enabled || !acceptsCompletion(settings, tagEntries(current.tagSlot).keys, tag)) return false
         val state = habitState(current, now)
-        if (state.dueAt == 0L) return false
-        prefs.edit().putHabit(current, completeHabit(current, settings, state, now)).apply()
+        if (state.dueAt == 0L && !(confirmedTap && current == Habit.WATER && state.loggedMl >= settings.goalMl)) return false
+        val counts = if (now < state.dueAt) listOf(ActivityCount.HABIT_DONE, ActivityCount.HABIT_EARLY)
+            else listOf(ActivityCount.HABIT_DONE)
+        prefs.edit().putHabit(current, completeHabit(current, settings, state, now))
+            .putActivity(current.id, counts, now).apply()
         return true
     }
 
-    fun markReminderSent(habit: Habit, state: HabitState, now: Long) {
-        prefs.edit().putHabit(habit, state.copy(sentAt = now)).apply()
+    fun markReminderSent(habit: Habit, state: HabitState, now: Long, posted: Boolean) {
+        prefs.edit().putHabit(habit, state.copy(sentAt = now)).apply {
+            if (posted) putActivity(habit.id, listOf(ActivityCount.HABIT_ALERT), now)
+        }.apply()
+    }
+
+    fun recordFocus(target: String, count: ActivityCount, now: Long = System.currentTimeMillis()) {
+        prefs.edit().putActivity(target, listOf(count), now).apply()
+    }
+
+    fun activityCounts(today: LocalDate, days: Int): Map<String, Map<ActivityCount, Int>> {
+        val totals = mutableMapOf<String, MutableMap<ActivityCount, Int>>()
+        repeat(days) { offset ->
+            val key = "activity_${today.minusDays(offset.toLong())}"
+            val day = JSONObject(prefs.getString(key, null) ?: "{}")
+            for (id in day.keys()) {
+                val entry = day.optJSONObject(id) ?: continue
+                val total = totals.getOrPut(id) { mutableMapOf() }
+                for (count in ActivityCount.entries) {
+                    if (entry.has(count.name)) total[count] = (total[count] ?: 0) + entry.optInt(count.name)
+                }
+            }
+        }
+        return totals
+    }
+
+    private fun SharedPreferences.Editor.putActivity(
+        id: String, counts: List<ActivityCount>, now: Long
+    ): SharedPreferences.Editor {
+        val today = localDay(now, ZoneId.systemDefault())
+        val key = "activity_$today"
+        val json = JSONObject(prefs.getString(key, null) ?: "{}")
+        val entry = json.optJSONObject(id) ?: JSONObject()
+        for (count in counts) entry.put(count.name, entry.optInt(count.name) + 1)
+        if (!prefs.contains(key)) {
+            val oldest = "activity_${today.minusDays(6)}"
+            prefs.all.keys.filter { it.startsWith("activity_") && it < oldest }.forEach(::remove)
+        }
+        return putString(key, json.put(id, entry).toString())
     }
 
     private fun SharedPreferences.Editor.putHabit(habit: Habit, state: HabitState): SharedPreferences.Editor {
