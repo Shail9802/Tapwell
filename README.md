@@ -9,6 +9,7 @@ Tapwell was vibe coded with AI assistance. The app is open source under the [MIT
 ## Features
 
 - **Focus sessions.** Lock selected apps or the YouTube Shorts player, unlock them for a timed session with an NFC tag, and set up a location-aware work break.
+- **Activity dashboard.** See screen time by Focus app, compare the last seven days, and check how much of each daily limit is left. Tapwell also charts Focus prompts, app launches, and habit logs.
 - **Habit reminders.** Track a daily water goal, take stand breaks, and create custom routines. Choose when reminders repeat and which habits require an NFC tag.
 - **Flexible alerts.** Use Android notifications, optional reminder pop-ups, a chime, or vibration. Create extra reminders in Samsung Reminder or your calendar where supported.
 - **Settings backup.** Connect Google Drive to back up app rules, NFC pairings, and habit settings and restore them on another phone.
@@ -33,10 +34,10 @@ Tapwell requires Android 12 or later and an NFC-capable phone.
 
 ## How the rules work
 
-- **Focus.** Instagram and YouTube Shorts are selected by default. Use **Add app** for other installed apps. Opening a locked app takes you to a screen where you can scan your Focus tag for a session. The default session lasts 10 minutes. The Shorts rule targets the player in the official YouTube app and keeps regular browsing and videos available. YouTube UI updates can change which controls are exposed to Android.
+- **Focus.** Instagram and YouTube Shorts are selected by default. To lock another installed app, choose **Add app**, select it, then confirm with **Add to Focus**. Opening a locked app takes you to a screen where you can scan your Focus tag for a session. The default session lasts 10 minutes. The Shorts rule targets the player in the official YouTube app and keeps regular browsing and videos available. YouTube UI updates can change which controls are exposed to Android.
 - **Removal.** Select **Remove** next to a rule and scan your Focus tag. The rule stays in force for two hours and then expires automatically. You can cancel a pending removal before it expires.
 - **Work break.** Set your location while at work, choose the radius, days, hours and break length, and scan your Focus tag to save the rule. Start a break from an app’s lock screen. Tapwell checks precise location at the start, allows one shared break per work window, and ends it no later than the end of that window.
-- **Water.** Defaults to 1,000 mL per day and 250 mL per scan, or four servings. When the reminder is due, it retries every five minutes until you scan the Water tag. Every scan counts one serving and restarts the configured interval, which defaults to 60 minutes. Reminders stop when you reach the daily goal. The total resets at local midnight, and the first reminder of the new day is due one interval later.
+- **Water.** Defaults to 1,000 mL per day and 250 mL per serving, or four servings. A due reminder repeats every five minutes by default until you scan the Water tag. Logging a serving restarts the configured interval, which defaults to 60 minutes. A scan between reminders asks for confirmation before logging. Reminders stop when you reach the daily goal. The total resets at local midnight, and the first reminder of the new day is due one interval later.
 - **Water notification.** The pending alert stays in the notification shade with a **Scan Water tag** action. If Android allows an individual swipe, Tapwell restores the alert silently and reopens the scanner when reminder pop-ups are enabled. Closing the scanner keeps the reminder pending. A matching tag clears the alert and restarts the timer.
 - **Standing.** Scan the Stand tag to complete the current reminder and restart the interval. Overdue reminders retry every five minutes. Standing reminders continue while enabled.
 - **Custom habits.** Open **Habits → Add habit** and enter a name and reminder interval. Turn on **Require NFC tag** to pair a separate tag from the habit card. Reminders start once the tag is paired. With that switch off, tap **Mark done**. Completion restarts the reminder interval.
@@ -48,8 +49,8 @@ Tapwell requires Android 12 or later and an NFC-capable phone.
 - **Manage tags.** Use **Setup → NFC tags** for Focus, Water, and Stand. Use **Manage tags** on an NFC habit card for that habit. Any paired tag works for its task. Adding, removing, or replacing tags on a paired task requires scanning one of its current tags.
 - **Log between reminders.** Scan a paired habit tag or tap **Mark done** for a habit that uses manual logging. Confirm to log the habit and restart its interval. Paired Tapwell text tags also work from the unlocked Home screen. Water reminders stop at your goal, and you can still log extra drinks.
 - **Meal snooze.** Open **Setup → Meal snooze** to enable or edit quiet windows. Lunch defaults to 12:30–14:00 and dinner to 19:30–21:30. Due alerts wait until the window ends.
-- **Activity dashboard.** Open **Activity** to chart Focus prompts, exits, and app launches, along with habit alerts and completions. With Android Usage access, a donut chart shows each Focus app’s share of screen time, a weekly bar chart shows usage by day, and daily limit bars show time used and time left. Choose **Today** or tap a day in **Last 7 days** to see its breakdown. Usage and activity counts are local to this phone.
-- **Daily focus limits.** Choose **Daily limit** next to a locked app and grant Android Usage access. Enter a daily allowance in minutes. The limit uses total foreground time for the app, including total YouTube time for the Shorts rule. Tapwell cannot read the configured timer from Digital Wellbeing, so enter the same number of minutes to mirror it.
+- **Activity dashboard.** Open **Activity** to chart Focus prompts, exits, and app launches, along with habit alerts and completions. Select **Open Usage access** and grant access to Tapwell to see the screen time charts. The donut shows each Focus app’s share of usage. In **Last 7 days**, tap a bar to see that day’s breakdown. **Today’s Tapwell limits** shows time used, time left, or time over the cap.
+- **Daily focus limits.** In **Focus**, choose **Daily limit** next to a locked app and enter an allowance in minutes. If a Focus tag is paired, scan it to save the change. Tapwell counts foreground time and resets the allowance at local midnight. The Shorts rule uses total YouTube time. To mirror a Digital Wellbeing timer, enter the same allowance in Tapwell.
 
 ## Google Cloud setup for this build
 
@@ -70,7 +71,7 @@ Use a fresh code for each emulated tag. Anyone with the same code can emulate th
 
 ## Permissions and data
 
-Accessibility lets Tapwell detect the foreground app and identify the YouTube Shorts player. NFC reads the tags you pair, and precise location is used when setting a work location or starting a work break. Tag IDs and the saved work location are included in the private Drive backup only when you connect Google Drive.
+Accessibility lets Tapwell detect the foreground app and identify the YouTube Shorts player. Usage access provides screen time for the charts and daily limits. Usage and activity counts stay on the phone. NFC reads the tags you pair, and precise location is used when setting a work location or starting a work break. Tag IDs and the saved work location are included in the private Drive backup only when you connect Google Drive.
 
 Android may delay five-minute retries during deep idle, even with exact alarms enabled. The phone owner can disable the accessibility service that enforces app locks. [Android’s alarm timing documentation](https://developer.android.com/training/monitoring-device-state/doze-standby)
 
