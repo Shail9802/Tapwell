@@ -23,9 +23,9 @@ In **Setup → Appearance**, you can turn off **Follow device colors** to use Ta
 
 ## Install and set up
 
-Tapwell requires Android 12 or later and an NFC-capable phone. Build the APK using the instructions below.
+Tapwell requires Android 12 or later and an NFC-capable phone.
 
-1. Transfer the APK to your phone and open it in My Files. Allow installation from that source when Android prompts you. Samsung’s [unknown-app installation guide](https://www.samsung.com/us/support/troubleshoot/TSG10001913/) covers Auto Blocker if the phone refuses to install it.
+1. Download the `.apk` from the latest release and open it on your phone. Allow installation from that source when Android prompts you. [GitHub Releases](https://github.com/Shail9802/Tapwell/releases/latest) · [Samsung installation help](https://www.samsung.com/us/support/troubleshoot/TSG10001913/)
 2. Open Tapwell and go to **Setup**. Turn on NFC and pair tags for **Focus**, **Water**, and **Stand**. Hold each tag against the back of your unlocked phone while Tapwell’s scanner is open. You can name and pair several tags per task, such as Home and Work.
 3. From **Setup**, enable **Tapwell app blocker** in Android Accessibility. If the switch is restricted, open **Settings → Apps → Tapwell → ⋮ → Allow restricted settings**, then return to Accessibility. [Android’s restricted settings guide](https://support.google.com/android/answer/12623953)
 4. Allow notifications and exact alarms in **Setup**. Then go to **Habits → Configure** to turn on and customize each reminder.
@@ -70,7 +70,7 @@ Accessibility lets Tapwell detect the foreground app and identify the YouTube Sh
 
 Android may delay five-minute retries during deep idle, even with exact alarms enabled. The phone owner can disable the accessibility service that enforces app locks. [Android’s alarm timing documentation](https://developer.android.com/training/monitoring-device-state/doze-standby)
 
-## Build
+## Build from source
 
 Open this folder in Android Studio with JDK 17 or newer, Android SDK Platform 36, and Android SDK Build-Tools 36.0.0. From PowerShell, build the app and run the unit tests.
 
