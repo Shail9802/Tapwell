@@ -20,6 +20,14 @@ internal enum class TagRole(val title: String) {
 internal data class TagSlot(val key: String, val title: String, val habitId: String? = null)
 internal data class PairedTag(val id: String, val label: String)
 
+private val unnamedTag = Regex("Tag [0-9]+")
+
+internal fun tagScanMessage(slot: TagSlot, label: String?): String {
+    val name = label?.trim()?.takeUnless { it.isEmpty() || it == "Original tag" || unnamedTag.matches(it) }
+        ?: slot.title
+    return if (name.endsWith(" tag", ignoreCase = true)) "$name Scanned" else "$name Tag Scanned"
+}
+
 internal data class ScannedTag(val uid: String?, val code: String? = null) {
     val identity: String? get() = code ?: uid
 

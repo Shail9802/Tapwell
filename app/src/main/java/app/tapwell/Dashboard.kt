@@ -202,14 +202,12 @@ private fun FocusPage(activity: MainActivity, now: Long, blocker: Boolean, onSet
         durationDialog = false
         activity.scanRole(TagRole.FOCUS, "Verify Focus tag", "Scan your tag to change your NFC unlock duration.") {
             store.saveUnlockMinutes(minutes)
-            activity.notice("Unlock duration saved")
         }
     }
     if (workDialog) WorkDialog(activity, work, dismiss = { workDialog = false }) { settings ->
         workDialog = false
         activity.scanRole(TagRole.FOCUS, "Verify Focus tag", "Scan your tag to save the work rules.") {
             store.saveWork(settings)
-            activity.notice("Work rules saved")
         }
     }
     removeTarget?.let { (target, name) ->
@@ -221,7 +219,7 @@ private fun FocusPage(activity: MainActivity, now: Long, blocker: Boolean, onSet
                 TextButton(onClick = {
                     removeTarget = null
                     activity.scanRole(TagRole.FOCUS, "Verify Focus tag", "Scan your tag to start the two-hour removal timer.") {
-                        if (store.queueRemoval(target)) activity.notice("Removal scheduled in two hours")
+                        store.queueRemoval(target)
                     }
                 }) { Text("Scan Focus tag") }
             },

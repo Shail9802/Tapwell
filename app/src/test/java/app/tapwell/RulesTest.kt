@@ -128,6 +128,16 @@ class RulesTest {
     }
 
     @Test
+    fun tagFeedbackUsesTaskNamesForDefaultLabelsAndKeepsCustomNames() {
+        val water = TagRole.WATER.slot
+        assertEquals("Water Tag Scanned", tagScanMessage(water, null))
+        assertEquals("Water Tag Scanned", tagScanMessage(water, "Tag 1"))
+        assertEquals("Water Tag Scanned", tagScanMessage(water, "Original tag"))
+        assertEquals("Kitchen Tag Scanned", tagScanMessage(water, "Kitchen"))
+        assertEquals("Kitchen Tag Scanned", tagScanMessage(water, "Kitchen Tag"))
+    }
+
+    @Test
     fun overnightWorkWindowUsesTheDayItStartsAndEndsOnTime() {
         val settings = WorkSettings(enabled = true, days = 1, startMinute = 22 * 60, endMinute = 6 * 60)
         val start = Instant.parse("2026-11-09T16:30:00Z").toEpochMilli()

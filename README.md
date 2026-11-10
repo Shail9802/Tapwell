@@ -46,6 +46,7 @@ Tapwell requires Android 12 or later and an NFC-capable phone.
 - **System reminder drafts.** Open a saved habit’s **Configure** screen and choose **Share to Samsung Reminder** or **Add to calendar**, when available. Review the entry and save it in the receiving app. These are separate reminders. Use Tapwell to complete the habit, scan a tag, or restart its timer.
 - **Google Drive sync.** Open **Setup → Google Drive sync → Connect Google Drive** on each device and choose the same Google account. Tapwell backs up app locks, paired tags, habit and alert settings, theme colors, and work rules in its private Drive app folder. On first connection, backed-up settings take priority where they overlap. Use **Sync now** to request an immediate refresh. Active unlocks, reminder timers, daily progress, and Android permissions are device-specific.
 - **Manage tags.** Use **Setup → NFC tags** for Focus, Water, and Stand. Use **Manage tags** on an NFC habit card for that habit. Any paired tag works for its task. Adding, removing, or replacing tags on a paired task requires scanning one of its current tags.
+- **Scan confirmation.** Tapwell shows a brief confirmation such as **Water Tag Scanned**. Paired Tapwell text tags also show their name when tapped outside the app. Start a scan in Tapwell to complete a habit or unlock an app.
 
 ## Google Cloud setup for this build
 

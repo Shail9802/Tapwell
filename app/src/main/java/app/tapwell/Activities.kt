@@ -46,9 +46,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 private class ScanRequest(
+    val slot: TagSlot,
     val title: String,
     val detail: String,
     val inlinePrompt: Boolean,
+    val label: String?,
     val onTag: (ScannedTag) -> String?
 )
 
@@ -121,9 +123,16 @@ internal abstract class TapActivity : ComponentActivity() {
 
     fun notice(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
 
-    private fun scan(title: String, detail: String, inlinePrompt: Boolean = false, onTag: (ScannedTag) -> String?) {
+    private fun scan(
+        slot: TagSlot,
+        title: String,
+        detail: String,
+        inlinePrompt: Boolean = false,
+        label: String? = null,
+        onTag: (ScannedTag) -> String?
+    ) {
         scanError = null
-        request = ScanRequest(title, detail, inlinePrompt, onTag)
+        request = ScanRequest(slot, title, detail, inlinePrompt, label, onTag)
         syncReader()
     }
 
@@ -142,12 +151,9 @@ internal abstract class TapActivity : ComponentActivity() {
         fun pairNew(approval: ScannedTag?) {
             val detail = if (approval == null) "Hold the back of your phone near the tag you want to add."
             else "Lift the first tag, then hold your phone near the new tag."
-            scan("Pair ${slot.title} tag", detail) { tag ->
+            scan(slot, "Pair ${slot.title} tag", detail, label = label) { tag ->
                 val error = store.enroll(slot, tag, label, replace, approval)
-                if (error == null) {
-                    Reminders.reconcile(this)
-                    notice("${slot.title} tag paired")
-                }
+                if (error == null) Reminders.reconcile(this)
                 error
             }
         }
@@ -161,15 +167,12 @@ internal abstract class TapActivity : ComponentActivity() {
     fun removeTag(slot: TagSlot, tag: PairedTag) {
         verifyTag(slot, "Remove ${tag.label}?", "Scan any paired ${slot.title} tag to remove ${tag.label}.") {
             if (!store.removeTag(slot, tag, it)) "Keep at least one tag paired to this task."
-            else {
-                notice("${tag.label} removed")
-                null
-            }
+            else null
         }
     }
 
     private fun verifyTag(slot: TagSlot, title: String, detail: String, onMatch: (ScannedTag) -> String?) {
-        scan(title, detail) { tag ->
+        scan(slot, title, detail) { tag ->
             if (store.matches(slot, tag)) onMatch(tag) else "This tag isn’t paired to ${slot.title}."
         }
     }
@@ -188,17 +191,19 @@ internal abstract class TapActivity : ComponentActivity() {
     fun log(habit: Habit, inlinePrompt: Boolean = false, test: Boolean = false, onSuccess: () -> Unit = {}) {
         fun complete(tag: ScannedTag?): String? {
             if (test) {
-                notice("Test scan matched")
+                if (tag == null) notice("Test scan matched")
                 onSuccess()
                 return null
             }
             if (!store.logHabit(habit, tag)) return "This reminder is paused, unavailable, or complete for today."
             Reminders.reconcile(this)
-            notice(when (habit) {
-                Habit.WATER -> "${store.habitSettings(habit).servingMl} mL logged"
-                Habit.STAND -> "Stand break logged"
-                else -> "${habit.title} marked done"
-            })
+            if (tag == null) {
+                notice(when (habit) {
+                    Habit.WATER -> "${store.habitSettings(habit).servingMl} mL logged"
+                    Habit.STAND -> "Stand break logged"
+                    else -> "${habit.title} marked done"
+                })
+            }
             onSuccess()
             return null
         }
@@ -207,7 +212,7 @@ internal abstract class TapActivity : ComponentActivity() {
             complete(null)?.let(::notice)
             return
         }
-        scan("Scan ${habit.tagLabel} tag", "Hold your phone near any tag paired to this habit.", inlinePrompt) { tag ->
+        scan(habit.tagSlot, "Scan ${habit.tagLabel} tag", "Hold your phone near any tag paired to this habit.", inlinePrompt) { tag ->
             if (!store.matches(habit.tagSlot, tag)) "This tag isn’t paired to ${habit.tagLabel}."
             else complete(tag)
         }
@@ -232,8 +237,12 @@ internal abstract class TapActivity : ComponentActivity() {
                         scanError = "This tag doesn’t provide an ID. Try another NFC tag."
                         return@runOnUiThread
                     }
+                    // The action can close the scanner before Android sees the tag leave the field.
+                    nfc?.ignore(tag, TAG_REMOVAL_DEBOUNCE_MS, null, null)
+                    val label = active.label ?: store.pairedLabel(active.slot, reading)
                     val error = active.onTag(reading)
                     if (error == null) {
+                        TagScanFeedback.show(this, reading, tagScanMessage(active.slot, label))
                         window.decorView.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                         if (request === active) cancelScan()
                     } else scanError = error

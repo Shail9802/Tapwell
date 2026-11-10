@@ -51,6 +51,11 @@ internal class Store private constructor(context: Context) {
 
     fun matches(slot: TagSlot, tag: ScannedTag): Boolean = tag.matches(tagEntries(slot).keys)
 
+    fun pairedLabel(slot: TagSlot, tag: ScannedTag): String? {
+        val entries = tagEntries(slot)
+        return entries[tag.code] ?: entries[tag.uid]
+    }
+
     fun enroll(slot: TagSlot, tag: ScannedTag, label: String, replace: PairedTag?, approval: ScannedTag?): String? {
         if (!slotAvailable(slot)) return "This task no longer accepts NFC tags."
         val id = tag.identity ?: return "This tag doesn’t provide an ID."

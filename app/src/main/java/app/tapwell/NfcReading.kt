@@ -1,12 +1,83 @@
 package app.tapwell
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.nfc.NfcAdapter
+import android.nfc.NdefMessage
 import android.nfc.NdefRecord
 import android.nfc.Tag
 import android.nfc.tech.Ndef
+import android.os.BadParcelableException
+import android.os.Bundle
+import android.os.SystemClock
+import android.widget.Toast
+import androidx.core.content.IntentCompat
 
-internal fun readNfcTag(tag: Tag): ScannedTag {
+internal const val TAG_REMOVAL_DEBOUNCE_MS = 600
+
+internal object TagScanFeedback {
+    private var previousIdentity: String? = null
+    private var previousScanAt = 0L
+
+    fun show(context: Context, tag: ScannedTag, message: String, passive: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        val duplicate = passive && tag.identity == previousIdentity && now - previousScanAt < 1_500
+        previousIdentity = tag.identity
+        previousScanAt = now
+        if (!duplicate) Toast.makeText(context.applicationContext, message, Toast.LENGTH_SHORT).show()
+    }
+}
+
+/** Handles NFC text tags when the user taps outside Tapwell's foreground scanner. */
+class TagNoticeActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        try {
+            if (intent.action != NfcAdapter.ACTION_NDEF_DISCOVERED || intent.type != "text/plain") return
+            val tag = IntentCompat.getParcelableExtra(intent, NfcAdapter.EXTRA_TAG, Tag::class.java) ?: return
+            val message = Ndef.get(tag)?.cachedNdefMessage
+                ?: IntentCompat.getParcelableArrayExtra(intent, NfcAdapter.EXTRA_NDEF_MESSAGES, NdefMessage::class.java)
+                    ?.singleOrNull() as? NdefMessage
+            val reading = readNfcTag(tag, message)
+            val store = Store.get(this)
+            val slots = TagRole.entries.map { it.slot } + store.habits().filter { it.role == null }.map { it.tagSlot }
+            val feedback = slots.firstNotNullOfOrNull { slot ->
+                store.pairedLabel(slot, reading)?.let { tagScanMessage(slot, it) }
+            } ?: if (reading.code != null) "Unpaired Tapwell Tag" else null
+            if (feedback == null) {
+                openStockViewer(tag, message)
+            } else {
+                NfcAdapter.getDefaultAdapter(this)?.ignore(tag, TAG_REMOVAL_DEBOUNCE_MS, null, null)
+                TagScanFeedback.show(this, reading, feedback, passive = true)
+            }
+        } catch (_: BadParcelableException) {
+            // A malformed NFC intent has no tag to display.
+        } finally {
+            finish()
+        }
+    }
+
+    private fun openStockViewer(tag: Tag, message: NdefMessage?) {
+        // Text records share one MIME type. Send non-Tapwell tags to the stock Android viewer.
+        val display = Intent(NfcAdapter.ACTION_TECH_DISCOVERED)
+            .setClassName("com.android.apps.tag", "com.android.apps.tag.TagViewer")
+            .putExtra(NfcAdapter.EXTRA_TAG, tag)
+        if (message != null) display.putExtra(NfcAdapter.EXTRA_NDEF_MESSAGES, arrayOf(message))
+        try {
+            startActivity(display)
+        } catch (_: ActivityNotFoundException) {
+            // This device has no stock Android tag viewer.
+        } catch (_: SecurityException) {
+            // Some devices restrict the stock viewer to the NFC system service.
+        }
+    }
+}
+
+internal fun readNfcTag(tag: Tag, message: NdefMessage? = Ndef.get(tag)?.cachedNdefMessage): ScannedTag {
     val uid = tag.id?.takeIf { it.isNotEmpty() }?.joinToString("") { "%02x".format(it) }
-    val record = Ndef.get(tag)?.cachedNdefMessage?.records?.singleOrNull()
+    val record = message?.records?.singleOrNull()
     val code = record?.let(::readTagfoldCode)
     return ScannedTag(uid, code)
 }

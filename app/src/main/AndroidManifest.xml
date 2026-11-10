@@ -38,6 +38,19 @@
             android:authorities="${applicationId}.reminder-sound"
             android:exported="true" />
         <activity android:name=".MainActivity" android:exported="true" />
+        <activity
+            android:name=".TagNoticeActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:permission="android.permission.NFC"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
         <activity-alias
             android:name=".LauncherStandard"
             android:exported="true"
