@@ -13,7 +13,7 @@ Tapwell was vibe coded with AI assistance. The app is open source under the [MIT
 - **Home-screen widgets.** Choose habits to log from a resizable widget, including when reminders are off. Swipe vertically through extra pages. An Activity widget shows daily totals, screen time, daily limits and a seven-day chart.
 - **Habit reminders.** Track a daily water goal, take stand breaks, and create custom routines. Choose when reminders repeat and which habits require an NFC tag.
 - **Flexible alerts.** Use Android notifications, optional reminder pop-ups, a chime, or vibration. Create extra reminders in Samsung Reminder or your calendar where supported.
-- **Settings backup.** Connect Google Drive to back up app rules, NFC pairings, and habit settings and restore them on another phone.
+- **Google account and backup.** Sign in with Google and approve private Drive sync for the same account to restore core app rules, NFC pairings, and habit settings on another phone. Official APK users do not need a Cloud project or OAuth client.
 
 ## Appearance
 
@@ -53,21 +53,31 @@ Tapwell requires Android 12 or later and an NFC-capable phone.
 - **Reminder alerts.** In **Setup → Reminder alerts**, switch between a gentle two-note chime with strong vibration and vibration only. The built-in chime gets a boost at low notification volume and softens at the top of the slider. For quiet alerts, use Tapwell’s vibration-only setting or Android’s Vibrate mode. Android’s Silent mode, Do Not Disturb, and notification channel settings still control delivery.
 - **Test alerts.** Use **Send test alert** in **Reminder alerts** for a water preview or in a habit’s **Configure** screen for that habit. Open the notification and scan a paired tag when the prompt asks for one. A test scan leaves the habit timer and water total as they are.
 - **System reminder drafts.** Open a saved habit’s **Configure** screen and choose **Share to Samsung Reminder** or **Add to calendar**, when available. Review the entry and save it in the receiving app. These are separate reminders. Use Tapwell to complete the habit, scan a tag, or restart its timer.
-- **Google Drive sync.** Open **Setup → Google Drive sync → Connect Google Drive** on each device and choose the same Google account. Tapwell backs up app locks, paired tags, habit and alert settings, theme colors, and work rules in its private Drive app folder. On first connection, backed-up settings take priority where they overlap. Use **Sync now** to request an immediate refresh. Active unlocks, reminder timers, daily progress, and Android permissions are device-specific.
+- **Google account and Drive sync.** Open **Setup → Google account → Sign in with Google** on each device and choose the same account. Approve private Drive sync; it is bound to your signed-in account. Tapwell backs up app locks, paired tags, habit and alert settings, theme colors, and work rules including the saved work location. On first connection, backed-up settings take priority where they overlap. Use **Sync now** to refresh. **Sign out** stops sync on that phone and retains its local configuration. Active unlocks, reminder timers, daily progress, activity history, daily app limits, widget selections and Android permissions are device-specific. See the [privacy policy](https://shail9802.github.io/Tapwell/privacy.html) for deletion controls.
 - **Manage tags.** Use **Setup → NFC tags** for Focus, Water, and Stand. Use **Manage tags** on an NFC habit card for that habit. Any paired tag works for its task. Adding, removing, or replacing tags on a paired task requires scanning one of its current tags.
 - **Log between reminders.** Scan a paired habit tag or tap **Mark done** for a habit that uses manual logging. Confirm to log the habit and restart its interval. Paired Tapwell text tags also work from the unlocked Home screen. Water reminders stop at your goal, and you can still log extra drinks.
 - **Meal snooze.** Open **Setup → Meal snooze** to enable or edit quiet windows. Lunch defaults to 12:30–14:00 and dinner to 19:30–21:30. Due alerts wait until the window ends.
 - **Activity dashboard.** Open **Activity** to chart Focus prompts, exits, and app launches, along with habit alerts and completions. Select **Open Usage access** and grant access to Tapwell to see the screen time charts. The donut shows each Focus app’s share of usage. In **Last 7 days**, tap a bar to see that day’s breakdown. **Today’s Tapwell limits** shows time used, time left, or time over the cap.
 - **Daily focus limits.** In **Focus**, choose **Daily limit** next to a locked app and enter an allowance in minutes. If a Focus tag is paired, scan it to save the change. Tapwell counts foreground time and resets the allowance at local midnight. The Shorts rule uses total YouTube time. To mirror a Digital Wellbeing timer, enter the same allowance in Tapwell.
 
-## Google Cloud setup for this build
+## Google account setup
 
-1. Enable the **Google Drive API** in one Google Cloud project for Tapwell.
-2. Configure the OAuth consent screen. Add the Google accounts you will use as test users if the consent app is in Testing.
-3. Under **Data access**, declare `https://www.googleapis.com/auth/drive.appdata` for the private configuration folder.
-4. Create an **Android** OAuth client for package `app.tapwell` and the SHA-1 of the certificate used to sign the installed APK. Run `apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk` to get the fingerprint. Register each signing certificate you use under the same Cloud project so the builds can access the same backup.
+Official APK users only sign in and approve sync. Standard Google sign-in and Drive API access do not require a paid authentication backend for this app. Google quotas and account policies still apply. Focus and habits work without signing in.
 
-Tapwell uses Google Play services to request access to the private Drive app folder. Self-built APKs use the OAuth registration for their own signing certificate. Focus and habits work locally without a Google account.
+Version 2.2.0 uses the dedicated **Tap well** project (`tapwell-shail9802`). If you connected an older version through the previous testing project, sign in again after updating. The new project starts a fresh backup from your phone's configuration. Make sure that phone contains the settings you want to keep; old-project backups are not automatically imported.
+
+For maintainers or independently signed builds:
+
+1. Enable **Google Drive API** in your Cloud project and configure an External consent screen with a homepage and privacy policy.
+2. Declare `openid`, `https://www.googleapis.com/auth/userinfo.email`, `https://www.googleapis.com/auth/userinfo.profile`, and `https://www.googleapis.com/auth/drive.appdata`.
+3. Create an **Android** OAuth client for your application ID and signing certificate SHA-1. Register every certificate you distribute. The official application ID is `app.tapwell`; Google permits a package/certificate pair in only one project.
+4. Create a **Web application** OAuth client in the same project. Its public client ID is Credential Manager's audience. Native sign-in needs no browser redirect URL here. Never embed a client secret in the APK.
+5. Override Gradle properties `tapwellGoogleWebClientId` and `tapwellGoogleProjectId` for your own project. Defaults contain only the official project's public identifiers. Independently signed APKs need a matching Android registration.
+6. Add test users while the consent app is in Testing. Publish for general availability and complete any verification Google requests.
+
+Tapwell uses Android Credential Manager, verifies Google's token signature, audience and nonce, then authorizes the same account's private Drive folder through Google Play services. No developer-operated authentication server is required.
+
+The [homepage](https://shail9802.github.io/Tapwell/) and [privacy policy](https://shail9802.github.io/Tapwell/privacy.html) are hosted by GitHub Pages from `docs/` on `main`.
 
 ## Test with Tagfold
 

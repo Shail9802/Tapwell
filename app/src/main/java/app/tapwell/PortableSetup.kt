@@ -11,7 +11,8 @@ internal data class SavedSync(
     val account: SyncAccount,
     val baseline: Map<String, String>,
     val outgoing: SetupChangeSet,
-    val lastSync: Long
+    val lastSync: Long,
+    val project: String = "cobalt-alchemy-350007"
 )
 
 internal class PortableSetup(private val prefs: SharedPreferences) {
@@ -32,7 +33,8 @@ internal class PortableSetup(private val prefs: SharedPreferences) {
             SyncAccount(json.getString("email"), json.getString("account")),
             baseline.keys().asSequence().associateWith(baseline::getString),
             readSetupChanges(json.getJSONObject("outgoing")),
-            json.getLong("lastSync")
+            json.getLong("lastSync"),
+            json.optString("project", "cobalt-alchemy-350007")
         )
     }
 
@@ -108,6 +110,7 @@ internal class PortableSetup(private val prefs: SharedPreferences) {
         .put("baseline", JSONObject(state.baseline))
         .put("outgoing", writeSetupChanges(state.outgoing))
         .put("lastSync", state.lastSync)
+        .put("project", state.project)
         .toString()
 
     private fun lockSet(group: String?): Set<String> {

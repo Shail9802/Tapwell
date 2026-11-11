@@ -11,7 +11,6 @@ import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.auth.api.identity.ClearTokenRequest
 import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.auth.api.identity.RevokeAccessRequest
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
@@ -35,10 +34,13 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
 
 internal class SetupSync private constructor(private val context: Context) {
     private val store get() = Store.get(context)
     private val local get() = store.portableSetup
+    private val project = context.getString(R.string.google_cloud_project)
     private val mutex = Mutex()
     private val mutableStatus = MutableStateFlow(SyncStatus())
     val status = mutableStatus.asStateFlow()
@@ -46,31 +48,46 @@ internal class SetupSync private constructor(private val context: Context) {
     fun available() = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) ==
         com.google.android.gms.common.ConnectionResult.SUCCESS
 
-    suspend fun authorize(): AuthorizationResult = requestAuthorization(local.sync()?.account)
+    fun prepare() {
+        if (savedForUser() == null) cancelJobs()
+    }
 
-    private suspend fun requestAuthorization(account: SyncAccount?): AuthorizationResult {
+    fun signingIn() {
+        mutableStatus.value = SyncStatus(busy = true, operation = "Signing in…")
+    }
+
+    suspend fun authorize(): AuthorizationResult {
+        val user = store.googleUser()?.takeIf { it.project == project } ?: throw SignInNeeded()
+        mutableStatus.value = SyncStatus(busy = true, operation = "Connecting sync…")
+        return requestAuthorization(user.email)
+    }
+
+    private suspend fun requestAuthorization(email: String): AuthorizationResult {
         val request = AuthorizationRequest.builder()
             .setRequestedScopes(scopes)
             .setOptOutIncludingGrantedScopes(true)
-        account?.let { request.setAccount(Account(it.email, "com.google")) }
+        request.setAccount(Account(email, "com.google"))
         return Identity.getAuthorizationClient(context).authorize(request.build()).awaitResult()
     }
 
     suspend fun connect(result: AuthorizationResult) {
         execute {
-            val saved = local.sync()
-            val token = result.accessToken ?: throw SignInNeeded()
+            val user = store.googleUser()?.takeIf { it.project == project } ?: throw SignInNeeded()
+            val saved = savedForUser()
+            val token = result.accessToken?.takeIf { Scopes.DRIVE_APPFOLDER in result.grantedScopes }
+                ?: throw SignInNeeded()
             val drive = DriveSetup(token)
             val account = withContext(Dispatchers.IO) { drive.account() }
+            if (!account.email.equals(user.email, ignoreCase = true)) throw SignInNeeded()
             if (saved != null && saved.account.id != account.id) throw SignInNeeded()
             synchronize(drive, account, saved)
         }
     }
 
     suspend fun refresh(): Boolean {
-        if (local.sync() == null) return true
+        if (savedForUser() == null) return true
         return execute {
-            val saved = local.sync() ?: return@execute
+            val saved = savedForUser() ?: return@execute
             var token = accessToken(saved.account)
             try {
                 synchronize(DriveSetup(token), saved.account, saved)
@@ -79,32 +96,55 @@ internal class SetupSync private constructor(private val context: Context) {
                 val request = ClearTokenRequest.builder().setToken(token).build()
                 Identity.getAuthorizationClient(context).clearToken(request).awaitResult()
                 token = accessToken(saved.account)
-                synchronize(DriveSetup(token), saved.account, local.sync())
+                synchronize(DriveSetup(token), saved.account, savedForUser())
             }
         }
     }
 
     private suspend fun accessToken(account: SyncAccount): String {
-        val result = requestAuthorization(account)
+        val result = requestAuthorization(account.email)
         if (result.hasResolution()) throw SignInNeeded()
-        return result.accessToken ?: throw SignInNeeded()
+        return result.accessToken?.takeIf { Scopes.DRIVE_APPFOLDER in result.grantedScopes } ?: throw SignInNeeded()
     }
 
-    suspend fun disconnect() {
+    suspend fun signOut() {
         execute {
-            val account = local.sync()?.account ?: return@execute
-            val request = RevokeAccessRequest.builder().setAccount(Account(account.email, "com.google"))
-                .setScopes(scopes).build()
-            Identity.getAuthorizationClient(context).revokeAccess(request).awaitResult()
-            local.disconnect()
-            val jobs = context.getSystemService(JobScheduler::class.java)
-            jobs.cancel(EDIT_JOB)
-            jobs.cancel(PERIODIC_JOB)
+            store.clearGoogleUser()
+            cancelJobs()
+            GoogleSignIn.clear(context)
         }
     }
 
+    private fun savedForUser(): SavedSync? = syncForGoogleUser(local.sync(), store.googleUser(), project)
+
+    private fun cancelJobs() {
+        val jobs = context.getSystemService(JobScheduler::class.java)
+        jobs.cancel(EDIT_JOB)
+        jobs.cancel(PERIODIC_JOB)
+    }
+
+    fun authorizationCancelled() {
+        mutableStatus.value = SyncStatus(reconnect = store.googleUser() != null)
+    }
+
     fun authorizationFailed(error: Exception) {
-        mutableStatus.value = SyncStatus(message = describe(error))
+        if (error is GetCredentialCancellationException) authorizationCancelled()
+        else mutableStatus.value = SyncStatus(message = describe(error), reconnect = store.googleUser() != null)
+    }
+
+    fun signInFailed(error: Exception) {
+        if (error is GetCredentialCancellationException) {
+            authorizationCancelled()
+            return
+        }
+        val message = when (error) {
+            is NoCredentialException -> "Add a Google account in your phone’s account settings, then try signing in again."
+            is IOException -> "Couldn’t reach Google. Check your connection and try again."
+            is IllegalArgumentException, is java.security.GeneralSecurityException ->
+                "Google’s sign-in response could not be verified. Try again and check the phone’s date and time."
+            else -> "Google sign-in couldn’t finish. Update Google Play services and try again."
+        }
+        mutableStatus.value = SyncStatus(message = message)
     }
 
     private suspend fun execute(action: suspend () -> Unit): Boolean = mutex.withLock {
@@ -131,7 +171,7 @@ internal class SetupSync private constructor(private val context: Context) {
         val device = local.deviceId()
         val merged = mergeSetup(current, saved?.baseline, saved?.outgoing.orEmpty(), downloaded.map { it.changes }, device)
         val oldHabits = store.habits()
-        val staged = SavedSync(account, merged.setup, merged.outgoing, saved?.lastSync ?: 0)
+        val staged = SavedSync(account, merged.setup, merged.outgoing, saved?.lastSync ?: 0, project)
         local.apply(merged.setup, staged)
         if (saved == null) schedulePeriodic(context)
         if (merged.setup != current) {
@@ -150,6 +190,8 @@ internal class SetupSync private constructor(private val context: Context) {
         fun get(context: Context): SetupSync = instance ?: SetupSync(context.applicationContext).also { instance = it }
 
         fun scheduleEdit(context: Context) {
+            val store = Store.get(context)
+            if (syncForGoogleUser(store.portableSetup.sync(), store.googleUser(), context.getString(R.string.google_cloud_project)) == null) return
             val jobs = context.getSystemService(JobScheduler::class.java)
             if (jobs.getPendingJob(EDIT_JOB) != null) return
             jobs.schedule(job(context, EDIT_JOB).setMinimumLatency(2_000).build())
@@ -165,14 +207,15 @@ internal class SetupSync private constructor(private val context: Context) {
             .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
 
         private fun describe(error: Exception) = when {
-            error is SignInNeeded -> "Reconnect Google Drive to continue syncing."
+            error is SignInNeeded -> "Allow sync for your signed-in Google account to continue."
+            error is NoCredentialException -> "Add a Google account in your phone’s account settings, then try signing in again."
             error is ApiException && error.statusCode == CommonStatusCodes.DEVELOPER_ERROR ->
-                "Google needs an Android OAuth client registered for this Tapwell build."
+                "Google sign-in is not configured for this Tapwell build. Contact the developer."
             error is DriveSetupError && error.status == 403 ->
                 "Google denied access. Check that Drive API is enabled and that your account can use this OAuth app."
             error is DriveSetupError && error.status == 401 ->
                 "Google Drive authorization expired. Reconnect and try again."
-            error is IOException -> "Drive sync couldn’t finish. Your setup is still on this phone."
+            error is IOException -> "Couldn’t connect to Google. Check your connection and try again."
             error is ApiException -> "Google sign-in couldn’t finish (code ${error.statusCode})."
             else -> "Tapwell couldn’t read the backup. Check the app version and try again."
         }
@@ -184,7 +227,14 @@ internal class SignInNeeded : Exception()
 private const val EDIT_JOB = 0x545701
 private const val PERIODIC_JOB = 0x545702
 
-internal data class SyncStatus(val busy: Boolean = false, val message: String? = null, val reconnect: Boolean = false)
+internal data class SyncStatus(
+    val busy: Boolean = false, val message: String? = null, val reconnect: Boolean = false,
+    val operation: String = "Syncing…"
+)
+
+internal fun syncForGoogleUser(saved: SavedSync?, user: GoogleUser?, project: String): SavedSync? =
+    saved?.takeIf { user != null && user.project == project && it.project == project &&
+        it.account.email.equals(user.email, ignoreCase = true) }
 
 class SetupSyncJob : JobService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

@@ -320,7 +320,10 @@ internal abstract class TapActivity : ComponentActivity() {
 internal class MainActivity : TapActivity() {
     val setupSync by lazy { SetupSync.get(this) }
     private val googleAuthorization = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        if (result.resultCode != RESULT_OK) {
+            setupSync.authorizationCancelled()
+            return@registerForActivityResult
+        }
         lifecycleScope.launch {
             try {
                 val authorized = Identity.getAuthorizationClient(this@MainActivity)
@@ -335,6 +338,7 @@ internal class MainActivity : TapActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         migrateLauncherAppearance(this)
+        setupSync.prepare()
         setContent { TapTheme { Dashboard(this) } }
     }
 
@@ -347,6 +351,7 @@ internal class MainActivity : TapActivity() {
     }
 
     fun connectGoogleDrive() {
+        if (setupSync.status.value.busy) return
         lifecycleScope.launch {
             try {
                 val result = setupSync.authorize()
@@ -357,9 +362,33 @@ internal class MainActivity : TapActivity() {
                     setupSync.connect(result)
                 }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                setupSync.authorizationCancelled()
                 throw cancelled
             } catch (error: Exception) {
                 setupSync.authorizationFailed(error)
+            }
+        }
+    }
+
+    fun signInWithGoogle() {
+        if (setupSync.status.value.busy) return
+        setupSync.signingIn()
+        lifecycleScope.launch {
+            var signedIn = false
+            try {
+                val user = GoogleSignIn.signIn(this@MainActivity)
+                store.saveGoogleUser(user)
+                signedIn = true
+                val result = setupSync.authorize()
+                val resolution = result.pendingIntent
+                if (result.hasResolution() && resolution != null) {
+                    googleAuthorization.launch(IntentSenderRequest.Builder(resolution).build())
+                } else setupSync.connect(result)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                setupSync.authorizationCancelled()
+                throw cancelled
+            } catch (error: Exception) {
+                if (signedIn) setupSync.authorizationFailed(error) else setupSync.signInFailed(error)
             }
         }
     }

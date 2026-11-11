@@ -27,6 +27,22 @@ internal class Store private constructor(context: Context) {
 
     init { prefs.registerOnSharedPreferenceChangeListener(listener) }
 
+    fun googleUser(): GoogleUser? {
+        val encoded = prefs.getString("google_user", null) ?: return null
+        val json = JSONObject(encoded)
+        return GoogleUser(json.getString("subject"), json.getString("email"),
+            json.optString("name").takeIf(String::isNotBlank), json.getString("project"))
+    }
+
+    fun saveGoogleUser(user: GoogleUser) {
+        prefs.edit().putString("google_user", JSONObject().put("subject", user.subject)
+            .put("email", user.email).put("name", user.name).put("project", user.project).toString()).apply()
+    }
+
+    fun clearGoogleUser() {
+        prefs.edit().remove("google_user").apply()
+    }
+
     fun reminderChime(): Boolean = prefs.getBoolean("reminder_chime", true)
 
     fun setReminderChime(enabled: Boolean) {

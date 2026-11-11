@@ -476,9 +476,9 @@ private fun SetupPage(
     SetupRow("Meal snooze", "Pause habit alerts during lunch and dinner.", "Open",
         activity.store.mealSnoozes().any { it.enabled }) { mealSnoozes = true }
     if (mealSnoozes) MealSnoozeDialog(activity, dismiss = { mealSnoozes = false })
-    val connected = remember(revision) { activity.store.portableSetup.connected() }
-    SetupRow("Google Drive sync", "Back up and restore your Tapwell setup across phones.", "Open", connected) { googleSync = true }
-    if (googleSync) GoogleSyncDialog(activity, dismiss = { googleSync = false })
+    val googleUser = remember(revision) { activity.store.googleUser() }
+    SetupRow("Google account", googleUser?.email ?: "Sign in to sync and restore your Tapwell setup.", "Open", googleUser != null) { googleSync = true }
+    if (googleSync) GoogleAccountDialog(activity, dismiss = { googleSync = false })
     Text("NFC tags", style = MaterialTheme.typography.titleLarge)
     TagRole.entries.forEach { role ->
         val count = remember(revision, role) { activity.store.tags(role.slot).size }
