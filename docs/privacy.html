@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How Tapwell handles local app data, Google sign-in and optional private Google Drive backups.">
+  <title>Privacy policy — Tapwell</title>
+  <link rel="icon" href="tapwell.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header><a class="brand" href="./"><img src="tapwell.svg" width="40" height="40" alt="">Tapwell</a><nav aria-label="Main"><a href="./">Home</a><a href="https://github.com/Shail9802/Tapwell">Source code ↗</a></nav></header>
+  <main class="policy">
+    <p class="eyebrow">Last updated · 12 November 2026</p>
+    <h1>Privacy policy</h1>
+    <p class="lead">Tapwell is an open-source Android focus and habit app developed by Shail. Core features work on your phone without an account. Google sign-in and private Drive backup are optional.</p>
+    <h2>Data on your phone</h2>
+    <p>Tapwell stores your selected apps, paired NFC tag identifiers and emulation codes, habit names and settings, reminder preferences, saved work location and work schedule, and appearance preferences locally. It also stores habit logs and counts, Focus prompt and launch counts, usage summaries, active timers and widget selections on the device.</p>
+    <p>Accessibility access identifies the foreground app and YouTube Shorts controls to enforce your rules. Usage access supplies screen time for charts and daily limits. This processing happens on the phone. Tapwell does not upload your activity history or screen contents to a developer-operated server.</p>
+    <h2>Permissions you choose</h2>
+    <p>NFC is used to pair and recognize tags. Location is used when you save a work location or request a location-based work break. Notifications, alarms, vibration and optional display-over-other-apps access deliver reminders. Optional device administration and eligible managed-device NFC controls work only when explicitly enabled. Android controls these permissions.</p>
+    <p>If you choose to share a reminder with Samsung Reminder or a calendar app, the reminder details are passed to the app you select. You review and save the draft there; that app's privacy policy applies to its copy.</p>
+    <h2>Google sign-in and private Drive sync</h2>
+    <p>When you sign in, Google provides a verified account identifier, email address and, when available, display name. Tapwell saves those profile details locally to show the signed-in account and bind sync to it. Google handles authentication through its Android services. Tapwell does not receive your Google password and does not store ID or access tokens in its own settings.</p>
+    <p>With your permission, Tapwell uses the <code>drive.appdata</code> scope to read and write its own configuration files in your private Google Drive application-data folder. This permission does not grant access to your unrelated Drive documents. Tapwell also uses basic sign-in scopes for identity and email/profile information.</p>
+    <p>The backup includes core app-lock rules, NFC pairings and tag codes, habit configurations, reminder alert and appearance settings, and saved work rules, including the work location you configured. Backups also contain sync metadata, such as a device replica identifier and change records, to reconcile settings between devices.</p>
+    <p>Daily habit progress, activity history, screen-time history, active unlocks and reminder timers, daily app limits, widget selections and Android permissions are not restored by this configuration sync. On first connection, existing cloud settings take priority where they overlap with local settings.</p>
+    <p>Google account data and backups are used to provide sign-in, synchronization and restoration. Tapwell does not sell this data, use it for advertising or transfer it to an AI service. Tapwell's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+    <h2>Services and security</h2>
+    <p>Tapwell communicates with Google over HTTPS for authentication, public signing keys and the Drive API. Google processes information under its <a href="https://policies.google.com/privacy">privacy policy</a>. No developer-operated account database is required for this flow. Protection of local data also depends on your phone's screen lock, Android security and anyone with access to the device.</p>
+    <h2>Retention and deletion</h2>
+    <p>Local settings remain until you change them, clear Tapwell's app storage or uninstall it, subject to Android's backup and restore behavior. Signing out stops Tapwell sync on that phone and removes the locally saved Google profile; it retains your local setup and account-bound sync metadata so you can reconnect.</p>
+    <p>Signing out or uninstalling does not delete the cloud backup. To delete it, open Google Drive on the web, go to Settings → Manage apps → Tapwell → Options → Delete hidden app data, where available. You can revoke Tapwell's access through your <a href="https://myaccount.google.com/connections">Google account connections</a>. Revoking access and deleting stored data are separate actions. Disconnect other devices first if you want to prevent them from creating a new backup.</p>
+    <h2>This website</h2>
+    <p>These pages are hosted on GitHub Pages. They use no analytics scripts, advertising, forms or tracking cookies added by Tapwell. GitHub may process request data under its <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">privacy statement</a>. External links are governed by their respective sites.</p>
+    <h2>Contact and changes</h2>
+    <p>For privacy questions or support, contact Shail through the <a href="https://github.com/Shail9802">developer's GitHub profile</a> or <a href="https://github.com/Shail9802/Tapwell/issues">Tapwell issues</a>. Issues are public; do not post private tag codes, location, account credentials or personal habit information. Changes to this policy will be published here with an updated date.</p>
+  </main>
+  <footer><p>Developed with love ❤️ by <a href="https://github.com/Shail9802">Shail</a>.</p><div><a href="./">Tapwell home</a><a href="https://github.com/Shail9802/Tapwell">Source code</a></div></footer>
+</body>
+</html>
