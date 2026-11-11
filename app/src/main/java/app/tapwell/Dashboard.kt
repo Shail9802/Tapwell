@@ -456,6 +456,7 @@ private fun SetupPage(
     var appearance by rememberSaveable { mutableStateOf(false) }
     var alertSettings by rememberSaveable { mutableStateOf(false) }
     var nfcAutomation by rememberSaveable { mutableStateOf(false) }
+    var deviceAdministration by rememberSaveable { mutableStateOf(false) }
     var googleSync by rememberSaveable { mutableStateOf(false) }
     var mealSnoozes by rememberSaveable { mutableStateOf(false) }
     var about by rememberSaveable { mutableStateOf(false) }
@@ -464,6 +465,10 @@ private fun SetupPage(
     if (appearance) AppearanceDialog(activity, dismiss = { appearance = false })
     SetupRow("NFC automation", "Set up Samsung routines or direct NFC control.", "Open", false) { nfcAutomation = true }
     if (nfcAutomation) NfcAutomationDialog(activity, dismiss = { nfcAutomation = false })
+    SetupRow("Device administration", "Review and activate Tapwell’s Android device-admin status.", "Open", false) {
+        deviceAdministration = true
+    }
+    if (deviceAdministration) DeviceAdministrationDialog(activity, dismiss = { deviceAdministration = false })
     SetupRow("Reminder alerts", "Choose a gentle chime or vibration only, and send a test alert.", "Open", false) { alertSettings = true }
     if (alertSettings) ReminderAlertsDialog(activity, dismiss = { alertSettings = false })
     SetupRow("Meal snooze", "Pause habit alerts during lunch and dinner.", "Open",

@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">Tapwell</string>
+    <string name="device_admin_description">Register Tapwell as a device administrator. Direct NFC control additionally requires managed-device owner or system-app status and secure-settings permission.</string>
     <string name="focus_service_label">Tapwell app blocker</string>
     <string name="focus_service_summary">Lock chosen apps and the YouTube Shorts player.</string>
     <string name="focus_service_description">Tapwell uses the foreground app name to enforce your locks and reads YouTube’s visible controls to identify the Shorts player. Tapwell does not save screen contents or send them off your device.</string>

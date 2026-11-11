@@ -108,6 +108,7 @@ internal fun NfcAutomationDialog(activity: MainActivity, dismiss: () -> Unit) {
                 Text("Turn NFC on when an NFC reminder is posted or a tag scanner opens. This setting applies to this phone.")
                 if (reason != null) Text(reason, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Android offers this control to system and managed-device owner apps with secure-settings permission. An ordinary installation can use the Samsung routine above.")
+                Text("Review device-admin status in Setup → Device administration. Standard device-admin activation alone does not unlock direct NFC control.")
                 if (enabled && reason == null) {
                     TextButton(onClick = {
                         result = if (NfcAutomation.enableIfNeeded(activity)) "NFC is on or starting."

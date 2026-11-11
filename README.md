@@ -34,6 +34,8 @@ Tapwell requires Android 12 or later and an NFC-capable phone.
 
 ## How the rules work
 
+- **Device administration.** Open **Setup → Device administration → Activate device admin** to review Android’s confirmation screen. The dialog shows Tapwell’s current admin or owner status. Use **Open security settings** to find Android’s Device admin apps controls and deactivate it. Standard device-admin activation alone does not grant direct NFC control. Device-owner enrollment is a separate management setup, usually performed on a new or factory-reset device.
+
 - **NFC automation.** Open **Setup → NFC automation** for Samsung Modes and Routines instructions and a shortcut to Samsung’s app. Create the routine there using a Tapwell notification or app opening as the condition and NFC On as the action, where available. Direct NFC control is also available on Android 16 or later when Tapwell has system-app or managed-device owner status and secure-settings permission. Its switch shows eligibility on the current phone. When enabled, Tapwell requests NFC activation for NFC reminders and scanners.
 
 - **Focus.** Instagram and YouTube Shorts are selected by default. To lock another installed app, choose **Add app**, select it, then confirm with **Add to Focus**. Opening a locked app takes you to a screen where you can scan your Focus tag for a session. The default session lasts 10 minutes. The Shorts rule targets the player in the official YouTube app and keeps regular browsing and videos available. YouTube UI updates can change which controls are exposed to Android.
