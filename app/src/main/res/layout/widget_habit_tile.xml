@@ -1,0 +1,11 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_habit_tile" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:padding="4dp" android:gravity="center" android:orientation="vertical"
+    android:background="@drawable/widget_tile">
+    <TextView android:id="@+id/widget_habit_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center" android:textColor="@color/widget_text" android:textSize="13sp" android:textStyle="bold"
+        android:maxLines="1" android:ellipsize="end" />
+    <TextView android:id="@+id/widget_habit_count" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center" android:textColor="@color/widget_accent" android:textSize="11sp"
+        android:maxLines="1" android:ellipsize="end" />
+</LinearLayout>

@@ -142,7 +142,7 @@ internal abstract class TapActivity : ComponentActivity() {
 
     fun notice(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
 
-    private fun scan(
+    protected fun scan(
         slot: TagSlot,
         title: String,
         detail: String,

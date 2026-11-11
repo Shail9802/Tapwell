@@ -1,5 +1,13 @@
 <resources>
     <string name="app_name">Tapwell</string>
+    <string name="habit_widget_label">Tapwell habits</string>
+    <string name="habit_widget_description">Log selected habits from your home screen. Resize for more habits and swipe vertically through extra pages.</string>
+    <string name="activity_widget_label">Tapwell activity</string>
+    <string name="activity_widget_description">Today’s habit logs, Focus app opens, screen time and daily limits, with a seven-day activity chart.</string>
+    <string name="widget_choose_habits">Choose habits</string>
+    <string name="widget_edit">Edit</string>
+    <string name="widget_refresh">Refresh activity</string>
+    <string name="widget_activity_preview">Add this widget to see your daily activity.</string>
     <string name="device_admin_description">Register Tapwell as a device administrator. Direct NFC control additionally requires managed-device owner or system-app status and secure-settings permission.</string>
     <string name="focus_service_label">Tapwell app blocker</string>
     <string name="focus_service_summary">Lock chosen apps and the YouTube Shorts player.</string>

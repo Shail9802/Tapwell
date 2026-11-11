@@ -120,9 +120,12 @@ internal fun refreshHabit(
     return if (reset.dueAt == 0L) reset.copy(dueAt = now + settings.minutes * MINUTE) else reset
 }
 
-internal fun completeHabit(habit: Habit, settings: HabitSettings, state: HabitState, now: Long): HabitState {
+internal fun completeHabit(
+    habit: Habit, settings: HabitSettings, state: HabitState, now: Long, manualTracking: Boolean = false
+): HabitState {
     val logged = if (habit == Habit.WATER) state.loggedMl + settings.servingMl else 0
-    val due = if (habit == Habit.WATER && logged >= settings.goalMl) 0 else now + settings.minutes * MINUTE
+    val due = if ((manualTracking && !settings.enabled) || (habit == Habit.WATER && logged >= settings.goalMl)) 0
+        else now + settings.minutes * MINUTE
     return state.copy(loggedMl = logged, dueAt = due, sentAt = 0)
 }
 

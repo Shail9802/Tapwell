@@ -65,7 +65,9 @@ private enum class Tab(val title: String, val symbol: Symbol) {
 internal fun Dashboard(activity: MainActivity) {
     val store = activity.store
     val now = liveNow(store)
-    var tab by rememberSaveable { mutableStateOf(Tab.FOCUS) }
+    var tab by rememberSaveable {
+        mutableStateOf(if (activity.intent.getStringExtra("open_tab") == "STATS") Tab.STATS else Tab.FOCUS)
+    }
     var tagSlot by remember { mutableStateOf<TagSlot?>(null) }
     val revision = activity.permissionRevision
     val blocker = remember(revision) { FocusService.enabled(activity) }

@@ -19,6 +19,7 @@ internal class Store private constructor(context: Context) {
     val revision = changes.asStateFlow()
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         changes.value++
+        TapwellWidgets.scheduleUpdate(context)
         if (!portableSetup.applying && portablePreference(key) && portableSetup.connected()) {
             SetupSync.scheduleEdit(context)
         }
@@ -297,24 +298,29 @@ internal class Store private constructor(context: Context) {
         return state
     }
 
-    fun canConfirmHabitLog(habit: Habit, tag: ScannedTag?, now: Long = System.currentTimeMillis()): Boolean {
+    fun canConfirmHabitLog(
+        habit: Habit, tag: ScannedTag?, now: Long = System.currentTimeMillis(), manualTracking: Boolean = false
+    ): Boolean {
         val settings = habitSettings(habit)
-        if (!settings.enabled || !acceptsCompletion(settings, tagEntries(habit.tagSlot).keys, tag)) return false
+        if ((!settings.enabled && !manualTracking) || !acceptsCompletion(settings, tagEntries(habit.tagSlot).keys, tag)) return false
         val state = habitState(habit, now)
-        return state.dueAt > 0 || habit == Habit.WATER && state.loggedMl >= settings.goalMl
+        return manualTracking || state.dueAt > 0 || habit == Habit.WATER && state.loggedMl >= settings.goalMl
     }
 
     fun logHabit(
-        habit: Habit, tag: ScannedTag?, now: Long = System.currentTimeMillis(), confirmedOutsideReminder: Boolean = false
+        habit: Habit, tag: ScannedTag?, now: Long = System.currentTimeMillis(), confirmedOutsideReminder: Boolean = false,
+        manualTracking: Boolean = false
     ): Boolean {
         val current = habit(habit.id) ?: return false
         val settings = habitSettings(current)
-        if (!settings.enabled || !acceptsCompletion(settings, tagEntries(current.tagSlot).keys, tag)) return false
+        if ((!settings.enabled && !manualTracking) || !acceptsCompletion(settings, tagEntries(current.tagSlot).keys, tag)) return false
         val state = habitState(current, now)
-        if (state.dueAt == 0L && !(confirmedOutsideReminder && current == Habit.WATER && state.loggedMl >= settings.goalMl)) return false
+        if (state.dueAt == 0L && !manualTracking &&
+            !(confirmedOutsideReminder && current == Habit.WATER && state.loggedMl >= settings.goalMl)) return false
         val counts = if (now < state.dueAt) listOf(ActivityCount.HABIT_DONE, ActivityCount.HABIT_EARLY)
             else listOf(ActivityCount.HABIT_DONE)
-        prefs.edit().putHabit(current, completeHabit(current, settings, state, now))
+        val next = completeHabit(current, settings, state, now, manualTracking)
+        prefs.edit().putHabit(current, next)
             .putActivity(current.id, counts, now).apply()
         return true
     }

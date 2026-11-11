@@ -17,8 +17,9 @@ class HabitTapActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val store = Store.get(this)
         val habit = intent.getStringExtra("habit")?.let(store::habit)
+        val manualTracking = intent.getBooleanExtra("manual_tracking", false)
         val tag = ScannedTag(intent.getStringExtra("uid"), intent.getStringExtra("code")).takeIf { it.identity != null }
-        if (habit == null || !validRequest() || !store.canConfirmHabitLog(habit, tag)) {
+        if (habit == null || !validRequest() || !store.canConfirmHabitLog(habit, tag, manualTracking = manualTracking)) {
             finish()
             return
         }
@@ -29,6 +30,8 @@ class HabitTapActivity : ComponentActivity() {
             else -> "Log ${habit.title}?"
         }
         val detail = when {
+            !settings.enabled && habit == Habit.WATER -> "Add ${settings.servingMl} mL to today’s total with reminders off."
+            !settings.enabled -> "Log this habit with reminders off."
             habit != Habit.WATER -> "Mark this habit done and restart its reminder interval."
             store.habitState(habit).loggedMl + settings.servingMl >= settings.goalMl -> "Add ${settings.servingMl} mL to today’s total."
             else -> "Add ${settings.servingMl} mL and restart your water reminder interval."
@@ -42,7 +45,7 @@ class HabitTapActivity : ComponentActivity() {
                     confirmButton = {
                         TextButton(onClick = {
                             if (isFinishing) return@TextButton
-                            if (validRequest() && store.logHabit(habit, tag, confirmedOutsideReminder = true)) {
+                            if (validRequest() && store.logHabit(habit, tag, confirmedOutsideReminder = true, manualTracking = manualTracking)) {
                                 Reminders.reconcile(this)
                                 Toast.makeText(this, if (habit == Habit.WATER) "Drink logged" else "Habit logged", Toast.LENGTH_SHORT).show()
                             } else {
@@ -61,10 +64,11 @@ class HabitTapActivity : ComponentActivity() {
         SystemClock.elapsedRealtime() - intent.getLongExtra("scanned_at", -MINUTE) in 0 until MINUTE
 
     companion object {
-        internal fun prompt(context: Context, habit: Habit, tag: ScannedTag?) {
+        internal fun prompt(context: Context, habit: Habit, tag: ScannedTag?, manualTracking: Boolean = false) {
             context.startActivity(Intent(context, HabitTapActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .putExtra("habit", habit.id)
+                .putExtra("manual_tracking", manualTracking)
                 .putExtra("uid", tag?.uid)
                 .putExtra("code", tag?.code)
                 .putExtra("scanned_at", SystemClock.elapsedRealtime()))

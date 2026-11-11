@@ -43,6 +43,41 @@
             android:exported="true" />
         <activity android:name=".MainActivity" android:exported="true" />
         <activity
+            android:name=".HabitWidgetConfiguration"
+            android:exported="true"
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".WidgetHabitActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity="app.tapwell.widget_habit" />
+        <receiver android:name=".HabitWidgetProvider" android:exported="false" android:label="@string/habit_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/habit_widget" />
+        </receiver>
+        <receiver android:name=".ActivityWidgetProvider" android:exported="false" android:label="@string/activity_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/activity_widget" />
+        </receiver>
+        <activity
             android:name=".HabitTapActivity"
             android:exported="false"
             android:excludeFromRecents="true"

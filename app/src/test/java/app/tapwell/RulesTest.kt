@@ -15,6 +15,29 @@ class RulesTest {
     private val morning = Instant.parse("2026-11-09T03:30:00Z").toEpochMilli()
 
     @Test
+    fun widgetsExpandFromOneHabitToRowsAndColumns() {
+        assertEquals(1, habitWidgetGrid(64f, 80f, 80f, 96f).capacity)
+        assertEquals(2, habitWidgetGrid(144f, 80f, 80f, 96f).capacity)
+        assertEquals(4, habitWidgetGrid(144f, 176f, 80f, 96f).capacity)
+        assertEquals(8, habitWidgetGrid(304f, 176f, 80f, 96f).capacity)
+        assertEquals(1, habitWidgetGrid(0f, 0f, 0f, 0f).capacity)
+    }
+
+    @Test
+    fun manualWidgetTrackingCountsWaterWithoutSchedulingDisabledReminders() {
+        val settings = HabitSettings(enabled = false)
+        val state = HabitState(monday, loggedMl = 250)
+        val completed = completeHabit(Habit.WATER, settings, state, morning, manualTracking = true)
+        assertEquals(500, completed.loggedMl)
+        assertEquals(0L, completed.dueAt)
+        assertEquals(0L, completed.sentAt)
+        val stand = completeHabit(Habit.STAND, settings, HabitState(monday), morning, manualTracking = true)
+        assertEquals(0L, stand.dueAt)
+        val enabled = completeHabit(Habit.WATER, settings.copy(enabled = true), state, morning, manualTracking = true)
+        assertEquals(morning + 60 * MINUTE, enabled.dueAt)
+    }
+
+    @Test
     fun foregroundTimeCountsOverlappingActivitiesOnceAndClipsToMidnight() {
         val time = ForegroundTime(1_000)
         time.resume("feed", 500)

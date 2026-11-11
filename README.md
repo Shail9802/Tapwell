@@ -10,6 +10,7 @@ Tapwell was vibe coded with AI assistance. The app is open source under the [MIT
 
 - **Focus sessions.** Lock selected apps or the YouTube Shorts player, unlock them for a timed session with an NFC tag, and set up a location-aware work break.
 - **Activity dashboard.** See screen time by Focus app, compare the last seven days, and check how much of each daily limit is left. Tapwell also charts Focus prompts, app launches, and habit logs.
+- **Home-screen widgets.** Choose habits to log from a resizable widget, including when reminders are off. Swipe vertically through extra pages. An Activity widget shows daily totals, screen time, daily limits and a seven-day chart.
 - **Habit reminders.** Track a daily water goal, take stand breaks, and create custom routines. Choose when reminders repeat and which habits require an NFC tag.
 - **Flexible alerts.** Use Android notifications, optional reminder pop-ups, a chime, or vibration. Create extra reminders in Samsung Reminder or your calendar where supported.
 - **Settings backup.** Connect Google Drive to back up app rules, NFC pairings, and habit settings and restore them on another phone.
@@ -33,6 +34,9 @@ Tapwell requires Android 12 or later and an NFC-capable phone.
 5. In **Setup → Reminder pop-ups**, allow Tapwell to appear over other apps. A due reminder can then open an animated prompt over the current app or the lock screen. Unlock the phone to see habit details and scan the tag or mark the habit done. Standard notifications still open the prompt when tapped.
 
 ## How the rules work
+
+- **Habit widget.** Long-press your Home screen, choose **Widgets → Tapwell → Tapwell habits**, then select the habits to include. The widget starts at 1×1 with one habit. Resize it to show more columns and rows, such as two habits at 2×1 and four at 2×2. Launcher cell sizes determine the final layout. Swipe up or down for extra pages. Long-press and choose **Edit** to change the selection, or use **Edit** in larger widgets. Tapping a habit opens a confirmation. Habits requiring NFC first ask for a paired tag. Logging also works with reminders off. If reminders are on, a confirmed log restarts their interval.
+- **Activity widget.** Add **Tapwell activity** from the same widget picker and resize it for a compact summary or a larger dashboard. It shows today’s habit logs and app launches from Focus prompts, plus a seven-day bar chart. Grant Usage access in Tapwell to show Focus app screen time and daily limits. Tap the widget to open **Activity**, or use the refresh button for an updated snapshot. Widgets refresh after Tapwell data changes and periodically through Android, which may delay background updates.
 
 - **Device administration.** Open **Setup → Device administration → Activate device admin** to review Android’s confirmation screen. The dialog shows Tapwell’s current admin or owner status. Use **Open security settings** to find Android’s Device admin apps controls and deactivate it. Standard device-admin activation alone does not grant direct NFC control. Device-owner enrollment is a separate management setup, usually performed on a new or factory-reset device.
 
