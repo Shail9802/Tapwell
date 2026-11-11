@@ -455,12 +455,15 @@ private fun SetupPage(
     val revision by activity.store.revision.collectAsState()
     var appearance by rememberSaveable { mutableStateOf(false) }
     var alertSettings by rememberSaveable { mutableStateOf(false) }
+    var nfcAutomation by rememberSaveable { mutableStateOf(false) }
     var googleSync by rememberSaveable { mutableStateOf(false) }
     var mealSnoozes by rememberSaveable { mutableStateOf(false) }
     var about by rememberSaveable { mutableStateOf(false) }
     PageHeading("Setup", "Pair your tags and turn on the Android permissions Tapwell uses.")
     SetupRow("Appearance", "Choose Monet colors and your launcher icon.", "Open", false) { appearance = true }
     if (appearance) AppearanceDialog(activity, dismiss = { appearance = false })
+    SetupRow("NFC automation", "Set up Samsung routines or direct NFC control.", "Open", false) { nfcAutomation = true }
+    if (nfcAutomation) NfcAutomationDialog(activity, dismiss = { nfcAutomation = false })
     SetupRow("Reminder alerts", "Choose a gentle chime or vibration only, and send a test alert.", "Open", false) { alertSettings = true }
     if (alertSettings) ReminderAlertsDialog(activity, dismiss = { alertSettings = false })
     SetupRow("Meal snooze", "Pause habit alerts during lunch and dinner.", "Open",

@@ -98,6 +98,7 @@ internal object Reminders {
         val manager = context.getSystemService(NotificationManager::class.java)
         val channel = ReminderAlerts.channel(context, manager, habit)
         if (channel.importance == NotificationManager.IMPORTANCE_NONE) return false
+        if (Store.get(context).habitSettings(habit).needsNfc) NfcAutomation.enableIfNeeded(context)
         val screen = reminderScreen(context).putExtra(ReminderActivity.EXTRA_TEST_HABIT, habit.id)
         val open = PendingIntent.getActivity(context, TEST_ID, screen,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -167,6 +168,9 @@ internal object Reminders {
         restored: Boolean = false
     ): Int {
         val channel = ReminderAlerts.channel(context, manager, habit)
+        if (settings.needsNfc && channel.importance != NotificationManager.IMPORTANCE_NONE) {
+            NfcAutomation.enableIfNeeded(context)
+        }
         val open = PendingIntent.getActivity(
             context, requestCode(habit),
             reminderScreen(context)

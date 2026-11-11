@@ -2,6 +2,9 @@ package app.tapwell
 
 import android.Manifest
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.nfc.NfcAdapter
 import android.os.Bundle
 import android.provider.Settings
@@ -64,6 +67,13 @@ internal abstract class TapActivity : ComponentActivity() {
         private set
     private var resumed = false
     private var readerEnabled = false
+    private val nfcStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != NfcAdapter.ACTION_ADAPTER_STATE_CHANGED) return
+            permissionRevision++
+            syncReader()
+        }
+    }
     private var nextLocation: (() -> Unit)? = null
     private val precisePermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         val next = nextLocation
@@ -80,6 +90,15 @@ internal abstract class TapActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, nfcStateReceiver, IntentFilter(NfcAdapter.ACTION_ADAPTER_STATE_CHANGED),
+            androidx.core.content.ContextCompat.RECEIVER_EXPORTED
+        )
+    }
+
+    override fun onDestroy() {
+        unregisterReceiver(nfcStateReceiver)
+        super.onDestroy()
     }
 
     override fun onResume() {
@@ -236,6 +255,7 @@ internal abstract class TapActivity : ComponentActivity() {
 
     private fun syncReader() {
         val active = request
+        if (resumed && active != null) NfcAutomation.enableIfNeeded(this)
         if (resumed && active != null && nfcReady()) {
             if (readerEnabled) nfc?.disableReaderMode(this)
             readerEnabled = true

@@ -34,6 +34,8 @@ Tapwell requires Android 12 or later and an NFC-capable phone.
 
 ## How the rules work
 
+- **NFC automation.** Open **Setup → NFC automation** for Samsung Modes and Routines instructions and a shortcut to Samsung’s app. Create the routine there using a Tapwell notification or app opening as the condition and NFC On as the action, where available. Direct NFC control is also available on Android 16 or later when Tapwell has system-app or managed-device owner status and secure-settings permission. Its switch shows eligibility on the current phone. When enabled, Tapwell requests NFC activation for NFC reminders and scanners.
+
 - **Focus.** Instagram and YouTube Shorts are selected by default. To lock another installed app, choose **Add app**, select it, then confirm with **Add to Focus**. Opening a locked app takes you to a screen where you can scan your Focus tag for a session. The default session lasts 10 minutes. The Shorts rule targets the player in the official YouTube app and keeps regular browsing and videos available. YouTube UI updates can change which controls are exposed to Android.
 - **Removal.** Select **Remove** next to a rule and scan your Focus tag. The rule stays in force for two hours and then expires automatically. You can cancel a pending removal before it expires.
 - **Work break.** Set your location while at work, choose the radius, days, hours and break length, and scan your Focus tag to save the rule. Start a break from an app’s lock screen. Tapwell checks precise location at the start, allows one shared break per work window, and ends it no later than the end of that window.

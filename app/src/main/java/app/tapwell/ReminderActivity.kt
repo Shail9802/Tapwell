@@ -98,7 +98,11 @@ internal class ReminderActivity : TapActivity() {
         val active = habit != null && settings != null &&
             (test || (state != null && store.habitReady(habit, settings) && state.dueAt in 1..now))
         val needsNfc = habit != null && active && settings?.needsNfc == true && store.hasTags(habit.tagSlot)
-        val ready = nfcReady()
+        val revision = permissionRevision
+        val ready = androidx.compose.runtime.remember(revision) { nfcReady() }
+        LaunchedEffect(needsNfc, locked) {
+            if (needsNfc && !locked) NfcAutomation.enableIfNeeded(this@ReminderActivity)
+        }
         LaunchedEffect(habit?.id, needsNfc, locked, ready, test) {
             cancelScan()
             if (habit != null && needsNfc && !locked && ready) log(habit, fromReminder = true, test = test, onSuccess = ::next)
