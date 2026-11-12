@@ -126,6 +126,19 @@ internal class Store private constructor(context: Context) {
         return true
     }
 
+    fun recoverHabitTag(slot: TagSlot, expected: Set<String>, account: GoogleUser?, tag: ScannedTag, label: String): String? {
+        if (googleUser() != account) return "Your Google account changed. Start tag recovery again."
+        if (!slotAvailable(slot)) return "This task no longer accepts NFC tags."
+        val otherSlots = TagRole.entries.map { it.slot } + customHabitIds().map { TagSlot("${it}_tag", "", it) }
+        val otherTags = otherSlots.filter { it.key != slot.key }.flatMap { tagEntries(it).keys }.toSet()
+        val error = habitTagRecoveryError(slot, tagEntries(slot).keys, expected, tag, otherTags)
+        if (error != null) return error
+        val replacement = JSONObject().put(tag.identity!!, label.trim().ifEmpty { "${slot.title} tag" })
+        // Replace atomically only after device authentication and a valid new scan. Progress is untouched.
+        prefs.edit().putString("${slot.key}_list", replacement.toString()).remove(slot.key).apply()
+        return null
+    }
+
     private fun tagEntries(slot: TagSlot): Map<String, String> {
         val saved = prefs.getString("${slot.key}_list", null)
         if (saved != null) {

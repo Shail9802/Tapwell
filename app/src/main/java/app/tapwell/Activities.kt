@@ -319,6 +319,48 @@ internal abstract class TapActivity : ComponentActivity() {
 
 internal class MainActivity : TapActivity() {
     val setupSync by lazy { SetupSync.get(this) }
+    private data class HabitRecovery(
+        val slot: TagSlot, val label: String, val expected: Set<String>, val account: GoogleUser?
+    )
+    private var habitRecovery: HabitRecovery? = null
+    private val recoveryCredential = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val recovery = habitRecovery
+        habitRecovery = null
+        if (result.resultCode == RESULT_OK && recovery != null) {
+            if (store.googleUser() != recovery.account) {
+                notice("Your Google account changed. Start tag recovery again.")
+            } else {
+                scan(recovery.slot, "Scan new ${recovery.slot.title} tag",
+                    "Scan the tag you want to use. Your old tags stay paired until this scan succeeds.",
+                    label = recovery.label.ifBlank { recovery.slot.title }) { tag ->
+                    val error = store.recoverHabitTag(recovery.slot, recovery.expected, recovery.account, tag, recovery.label)
+                    if (error == null) Reminders.reconcile(this)
+                    error
+                }
+            }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    fun recoverHabitTags(slot: TagSlot, label: String) {
+        if (!supportsHabitTagRecovery(slot) || !store.hasTags(slot)) return
+        val keyguard = getSystemService(android.app.KeyguardManager::class.java)
+        val intent = keyguard.createConfirmDeviceCredentialIntent(
+            "Recover ${slot.title} tags", "Confirm your phone’s screen lock to replace unavailable habit tags."
+        )
+        if (intent == null) {
+            notice("Set a screen-lock PIN, pattern or password in Android Settings before recovering habit tags.")
+            return
+        }
+        habitRecovery = HabitRecovery(slot, label, store.tags(slot).map { it.id }.toSet(), store.googleUser())
+        try {
+            recoveryCredential.launch(intent)
+        } catch (_: android.content.ActivityNotFoundException) {
+            habitRecovery = null
+            notice("Screen-lock verification is unavailable on this phone.")
+        }
+    }
+
     private val googleAuthorization = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         if (result.resultCode != RESULT_OK) {
             setupSync.authorizationCancelled()

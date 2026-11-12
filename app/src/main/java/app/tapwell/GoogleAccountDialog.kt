@@ -5,6 +5,9 @@ import android.net.Uri
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -13,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -32,10 +36,13 @@ internal fun GoogleAccountDialog(activity: MainActivity, dismiss: () -> Unit) {
         onDismissRequest = dismiss,
         title = { Text("Google account") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (user == null) {
                     Text("Sign in with Google to sync your Tapwell setup across phones. Then approve private Drive sync for that account.")
                     Text("Your account stores app locks, NFC tags, habit settings, alert settings, and work rules including the saved work location.")
+                    Text("Paired tags are shared across devices using this account. Signing out or changing accounts keeps the settings already restored on this phone.",
+                        style = MaterialTheme.typography.bodySmall)
                     Text("When restoring, existing backup settings take priority where they overlap.",
                         style = MaterialTheme.typography.bodySmall)
                 } else {

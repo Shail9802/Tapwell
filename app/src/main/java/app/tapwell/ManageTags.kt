@@ -36,7 +36,23 @@ internal fun ManageTagsDialog(activity: MainActivity, slot: TagSlot, dismiss: ()
     val tags = remember(revision, slot) { activity.store.tags(slot) }
     var label by rememberSaveable(slot.key) { mutableStateOf("") }
     var testCode by rememberSaveable(slot.key) { mutableStateOf<String?>(null) }
+    var recovery by rememberSaveable(slot.key) { mutableStateOf(false) }
     LaunchedEffect(tags.size) { label = "" }
+    if (recovery) {
+        AlertDialog(
+            onDismissRequest = { recovery = false },
+            title = { Text("Recover ${slot.title} tags?") },
+            text = { Text("If you lost your tags or restored an unfamiliar pairing, confirm your phone’s screen lock and scan your replacement tag. This replaces all ${slot.title} tags only after a valid new scan. Your habit progress is kept. If sync is enabled, the replacement also syncs to devices using this Google account.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    recovery = false
+                    activity.recoverHabitTags(slot, label)
+                }) { Text("Verify screen lock") }
+            },
+            dismissButton = { TextButton(onClick = { recovery = false }) { Text("Cancel") } }
+        )
+        return
+    }
     AlertDialog(
         onDismissRequest = dismiss,
         title = { Text("${slot.title} tags") },
@@ -70,6 +86,9 @@ internal fun ManageTagsDialog(activity: MainActivity, slot: TagSlot, dismiss: ()
                 )
                 if (tags.isNotEmpty()) {
                     Text("You’ll verify a paired tag before changing the list.", style = MaterialTheme.typography.bodySmall)
+                    if (supportsHabitTagRecovery(slot)) {
+                        TextButton(onClick = { recovery = true }) { Text("Lost access to these tags?") }
+                    }
                 }
                 val code = testCode
                 if (code == null) {
