@@ -326,6 +326,10 @@ internal class MainActivity : TapActivity() {
 
     fun connectWaterHealth() {
         lifecycleScope.launch {
+            if (store.waterDestination() == WaterDestination.SAMSUNG) {
+                waterHealth.connectSamsung(this@MainActivity)
+                return@launch
+            }
             if (waterHealth.availability() != androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE) {
                 openSettings(waterHealth.installIntent())
                 return@launch

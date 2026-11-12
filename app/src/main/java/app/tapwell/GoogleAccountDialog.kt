@@ -41,6 +41,7 @@ internal fun GoogleAccountDialog(activity: MainActivity, dismiss: () -> Unit) {
                 if (user == null) {
                     Text("Sign in with Google to sync your Tapwell setup across phones. Then approve private Drive sync for that account.")
                     Text("Your account stores app locks, NFC tags, habit settings, alert settings, and work rules including the saved work location.")
+                    Text("Custom habit names may reveal health details, such as a medicine name. Enabling sync sends these settings and your saved work coordinates to your private Google Drive. Leave sync off to keep them on this phone.")
                     Text("Paired tags are shared across devices using this account. Signing out or changing accounts keeps the settings already restored on this phone.",
                         style = MaterialTheme.typography.bodySmall)
                     Text("When restoring, existing backup settings take priority where they overlap.",
@@ -59,6 +60,7 @@ internal fun GoogleAccountDialog(activity: MainActivity, dismiss: () -> Unit) {
                 }
                 Text("Daily progress, activity counts, reminder timers, widgets, and Android permissions are local to each phone.",
                     style = MaterialTheme.typography.bodySmall)
+                Text("Signing out does not delete local data or your Drive backup. See Privacy policy for access, deletion and withdrawal controls.", style = MaterialTheme.typography.bodySmall)
                 if (status.busy) Text(status.operation)
                 status.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 if (!available) Text("Google Play services is unavailable on this phone.", color = MaterialTheme.colorScheme.error)

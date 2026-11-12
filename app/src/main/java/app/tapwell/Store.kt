@@ -352,7 +352,7 @@ internal class Store private constructor(context: Context) {
         val next = completeHabit(current, settings, state, now, manualTracking)
         val edit = prefs.edit().putHabit(current, next).putActivity(current.id, counts, now)
         if (current == Habit.WATER) {
-            val event = newWaterEvent(now, settings.servingMl, waterExportEnabled())
+            val event = newWaterEvent(now, settings.servingMl, waterExportEnabled(), waterDestination())
             edit.putString("water_events", encodeWaterEvents(retainWaterEvents(waterEvents(), now) + event))
         }
         edit.apply()
@@ -363,6 +363,21 @@ internal class Store private constructor(context: Context) {
     fun waterEvents(): List<WaterEvent> = decodeWaterEvents(prefs.getString("water_events", "[]")!!)
 
     fun waterExportEnabled(): Boolean = prefs.getBoolean("water_export_enabled", false)
+
+    fun waterDestination(): WaterDestination = WaterDestination.valueOf(
+        prefs.getString("water_export_destination", "HEALTH_CONNECT")!!)
+
+    fun selectWaterDestination(destination: WaterDestination) {
+        check(!waterExportEnabled()) { "Disconnect before changing destination" }
+        prefs.edit().putString("water_export_destination", destination.name).remove("water_export_last").apply()
+    }
+
+    fun waterHistoryJson(): String = encodeWaterEvents(waterEvents())
+
+    fun clearWaterHistory() {
+        check(!waterExportEnabled())
+        prefs.edit().remove("water_events").remove("water_export_last").apply()
+    }
 
     fun enableWaterExport() {
         prefs.edit().putBoolean("water_export_enabled", true).apply()

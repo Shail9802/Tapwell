@@ -6,6 +6,10 @@ import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal enum class WaterDestination(val title: String) {
+    HEALTH_CONNECT("Health Connect"), SAMSUNG("Samsung Health")
+}
+
 /** Each confirmed drink keeps its original serving size and timestamp, independent of daily totals. */
 internal data class WaterEvent(
     val id: String,
@@ -13,7 +17,8 @@ internal data class WaterEvent(
     val offsetSeconds: Int,
     val millilitres: Int,
     val pending: Boolean,
-    val exported: Boolean = false
+    val exported: Boolean = false,
+    val destination: WaterDestination = WaterDestination.HEALTH_CONNECT
 ) {
     init {
         require(id.isNotBlank() && time > 0 && millilitres > 0)
@@ -22,24 +27,27 @@ internal data class WaterEvent(
     }
 }
 
-internal fun newWaterEvent(time: Long, millilitres: Int, exportEnabled: Boolean): WaterEvent =
+internal fun newWaterEvent(time: Long, millilitres: Int, exportEnabled: Boolean,
+    destination: WaterDestination = WaterDestination.HEALTH_CONNECT): WaterEvent =
     WaterEvent(UUID.randomUUID().toString(), time,
         ZoneId.systemDefault().rules.getOffset(Instant.ofEpochMilli(time)).totalSeconds,
-        millilitres, pending = exportEnabled)
+        millilitres, pending = exportEnabled, destination = destination)
 
 internal fun decodeWaterEvents(encoded: String): List<WaterEvent> {
     val array = JSONArray(encoded)
     return (0 until array.length()).map { index ->
         val value = array.getJSONObject(index)
         WaterEvent(value.getString("id"), value.getLong("time"), value.getInt("offset"),
-            value.getInt("ml"), value.getBoolean("pending"), value.getBoolean("exported"))
+            value.getInt("ml"), value.getBoolean("pending"), value.getBoolean("exported"),
+            WaterDestination.valueOf(value.optString("destination", "HEALTH_CONNECT")))
     }
 }
 
 internal fun encodeWaterEvents(events: List<WaterEvent>): String = JSONArray().apply {
     events.forEach { event ->
         put(JSONObject().put("id", event.id).put("time", event.time).put("offset", event.offsetSeconds)
-            .put("ml", event.millilitres).put("pending", event.pending).put("exported", event.exported))
+            .put("ml", event.millilitres).put("pending", event.pending).put("exported", event.exported)
+            .put("destination", event.destination.name))
     }
 }.toString()
 
@@ -48,6 +56,9 @@ internal fun markWaterEventExported(events: List<WaterEvent>, id: String): List<
 
 internal fun disconnectWaterEvents(events: List<WaterEvent>): List<WaterEvent> =
     events.map { if (it.pending) it.copy(pending = false) else it }
+
+internal fun pendingWaterEvents(events: List<WaterEvent>, destination: WaterDestination): List<WaterEvent> =
+    events.filter { it.pending && it.destination == destination }
 
 internal fun retainWaterEvents(events: List<WaterEvent>, now: Long): List<WaterEvent> =
     events.filter { it.pending || it.time >= now - 90L * 24 * 60 * MINUTE }

@@ -41,6 +41,26 @@ class WaterEventsTest {
     }
 
     @Test fun healthEventsAndConsentNeverEnterGoogleDriveConfigurationSync() {
-        listOf("water_events", "water_export_enabled", "water_export_last").forEach { assertFalse(portablePreference(it)) }
+        listOf("water_events", "water_export_enabled", "water_export_last", "water_export_destination").forEach { assertFalse(portablePreference(it)) }
+    }
+
+    @Test fun oldJournalKeepsHealthConnectDestinationWithoutReplayingToSamsung() {
+        val legacy = """[{"id":"old","time":1800000000000,"offset":19800,"ml":250,"pending":true,"exported":false}]"""
+        val old = decodeWaterEvents(legacy).single()
+        assertEquals(WaterDestination.HEALTH_CONNECT, old.destination)
+        assertTrue(pendingWaterEvents(listOf(old), WaterDestination.SAMSUNG).isEmpty())
+        assertEquals(listOf(old), pendingWaterEvents(listOf(old), WaterDestination.HEALTH_CONNECT))
+    }
+
+    @Test fun samsungQueueSurvivesRestartAndRemainsSeparateFromPreviouslySentHealthConnect() {
+        val samsung = newWaterEvent(drink.time, 500, true, WaterDestination.SAMSUNG)
+        val sent = drink.copy(pending = false, exported = true)
+        val restored = decodeWaterEvents(encodeWaterEvents(listOf(sent, samsung)))
+        assertEquals(listOf(samsung), pendingWaterEvents(restored, WaterDestination.SAMSUNG))
+        assertTrue(pendingWaterEvents(restored, WaterDestination.HEALTH_CONNECT).isEmpty())
+        val disconnected = disconnectWaterEvents(restored)
+        assertTrue(pendingWaterEvents(disconnected, WaterDestination.SAMSUNG).isEmpty())
+        assertEquals(750, disconnected.sumOf { it.millilitres })
+        assertTrue(disconnected.first().exported)
     }
 }

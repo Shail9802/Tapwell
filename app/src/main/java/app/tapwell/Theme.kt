@@ -219,7 +219,7 @@ internal fun liveNow(store: Store): Long {
     val tick by produceState(0L) {
         while (true) {
             delay(1000)
-            value++
+            value = value + 1
         }
     }
     return remember(revision, tick) { System.currentTimeMillis() }

@@ -3,7 +3,8 @@
     <uses-feature android:name="android.hardware.nfc" android:required="true" />
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+    <!-- Special access is granted by the user in Android Usage access settings. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.health.WRITE_HYDRATION" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />

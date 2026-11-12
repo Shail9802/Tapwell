@@ -586,15 +586,16 @@ private fun AppPicker(activity: MainActivity, locks: Set<String>, dismiss: () ->
     }
 }
 
+@Suppress("DEPRECATION")
 private fun selectableApps(context: Context): List<Pair<String, String>> {
     val packages = context.packageManager
     val homes = packages.queryIntentActivities(
-        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.ResolveInfoFlags.of(0)
+        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0
     ).map { it.activityInfo.packageName }.toSet()
     val dialer = context.getSystemService(android.telecom.TelecomManager::class.java).defaultDialerPackage
     val excluded = homes + setOf(context.packageName, YOUTUBE, "com.android.settings", "com.android.systemui", dialer)
     val apps = packages.queryIntentActivities(
-        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), PackageManager.ResolveInfoFlags.of(0)
+        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
     ).filter { it.activityInfo.packageName !in excluded }.map {
         it.activityInfo.packageName to it.loadLabel(packages).toString()
     }.distinctBy { it.first }

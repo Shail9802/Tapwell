@@ -206,7 +206,7 @@ internal object Reminders {
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(open)
-            .setVisibility(Notification.VISIBILITY_PRIVATE)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setCategory(Notification.CATEGORY_REMINDER)
 
     private fun dismissIntent(context: Context, intent: Intent): PendingIntent = PendingIntent.getBroadcast(
