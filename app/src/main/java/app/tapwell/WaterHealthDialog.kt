@@ -44,16 +44,17 @@ internal fun WaterHealthDialog(activity: MainActivity, dismiss: () -> Unit) {
     LaunchedEffect(permissionRevision) { health.refreshStatus() }
     AlertDialog(
         onDismissRequest = dismiss,
-        title = { Text("Water & health apps") },
+        title = { Text("Health Connect water") },
         text = {
             Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(if (enabled && status.permitted) "Health Connect export is on" else "Health Connect export is off",
                     style = MaterialTheme.typography.titleMedium)
+                Text("Destination: Health Connect on this phone. Samsung Health shows these entries only if it supports importing hydration.")
                 Text("Only new Water drinks confirmed after connection are exported. Old daily totals are not backfilled. Your configured serving size is saved with each drink.")
-                if (pending > 0) Text("$pending drinks waiting to export")
-                if (lastExport > 0) Text("Last exported ${DateUtils.getRelativeTimeSpanString(lastExport)}")
-                if (status.busy) Text("Exporting water intake…")
+                if (pending > 0) Text("$pending drinks waiting for Health Connect")
+                if (lastExport > 0) Text("Last sent to Health Connect ${DateUtils.getRelativeTimeSpanString(lastExport)}")
+                if (status.busy) Text("Exporting to Health Connect…")
                 status.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
                 Text("Samsung Health", style = MaterialTheme.typography.titleSmall)
                 Text(health.samsungHydrationSupport())
@@ -77,7 +78,7 @@ internal fun WaterHealthDialog(activity: MainActivity, dismiss: () -> Unit) {
                 if (enabled && status.permitted) activity.lifecycleScope.launch {
                     if (!health.flush()) WaterHealth.schedule(activity)
                 } else activity.connectWaterHealth()
-            }) { Text(if (enabled && status.permitted) "Export now" else "Connect Health Connect") }
+            }) { Text(if (enabled && status.permitted) "Export to Health Connect" else "Connect Health Connect") }
         },
         dismissButton = { TextButton(onClick = dismiss) { Text("Close") } }
     )

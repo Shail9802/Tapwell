@@ -107,13 +107,17 @@ internal class WaterHealth private constructor(private val context: Context) {
                 }
                 val health = client()
                 if (!health.permissionController.getGrantedPermissions().containsAll(permissions)) throw SecurityException()
+                var exported = 0
                 while (store.waterExportEnabled()) {
                     val pending = store.waterEvents().filter { it.pending }.take(100)
                     if (pending.isEmpty()) break
                     health.insertRecords(pending.map { it.hydrationRecord() })
                     pending.forEach { store.markWaterExported(it.id) }
+                    exported += pending.size
                 }
-                mutableStatus.value = WaterExportStatus(permitted = true)
+                mutableStatus.value = WaterExportStatus(permitted = true, message =
+                    if (exported > 0) "$exported ${if (exported == 1) "drink sent" else "drinks sent"} to Health Connect. Check Hydration in Health Connect to view the entries."
+                    else "No new drinks are waiting for Health Connect. Only drinks logged after connecting are exported; older totals are not backfilled.")
             }
             store.waterEvents().none { it.pending }
         } catch (_: TimeoutCancellationException) {

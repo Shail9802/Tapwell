@@ -13,8 +13,8 @@ android {
         applicationId = "app.tapwell"
         minSdk = 31
         targetSdk = 36
-        versionCode = 22
-        versionName = "2.3.0"
+        versionCode = 23
+        versionName = "2.3.1"
         resValue("string", "google_web_client_id", providers.gradleProperty("tapwellGoogleWebClientId")
             .getOrElse("722832906948-2226jgg6oogc8unq3608mihn0nl5tgff.apps.googleusercontent.com"))
         resValue("string", "google_cloud_project", providers.gradleProperty("tapwellGoogleProjectId")
