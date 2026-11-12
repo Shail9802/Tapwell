@@ -319,6 +319,29 @@ internal abstract class TapActivity : ComponentActivity() {
 
 internal class MainActivity : TapActivity() {
     val setupSync by lazy { SetupSync.get(this) }
+    val waterHealth by lazy { WaterHealth.get(this) }
+    private val waterPermission = registerForActivityResult(
+        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()
+    ) { granted -> lifecycleScope.launch { waterHealth.connect(granted) } }
+
+    fun connectWaterHealth() {
+        lifecycleScope.launch {
+            if (waterHealth.availability() != androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE) {
+                openSettings(waterHealth.installIntent())
+                return@launch
+            }
+            try {
+                val health = androidx.health.connect.client.HealthConnectClient.getOrCreate(this@MainActivity)
+                val granted = health.permissionController.getGrantedPermissions()
+                if (granted.containsAll(WaterHealth.permissions)) waterHealth.connect(granted)
+                else waterPermission.launch(WaterHealth.permissions)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                notice("Couldn’t open Health Connect. Update it in Android Settings and try again.")
+            }
+        }
+    }
     private data class HabitRecovery(
         val slot: TagSlot, val label: String, val expected: Set<String>, val account: GoogleUser?
     )
@@ -386,6 +409,8 @@ internal class MainActivity : TapActivity() {
 
     override fun onResume() {
         super.onResume()
+        lifecycleScope.launch { waterHealth.refreshStatus() }
+        if (store.waterExportEnabled()) WaterHealth.schedule(this)
         val sync = store.portableSetup.sync()
         if (sync != null && System.currentTimeMillis() - sync.lastSync > 30_000) {
             SetupSync.scheduleEdit(this)

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 
 internal class Store private constructor(context: Context) {
+    private val application = context.applicationContext
     private val prefs = context.getSharedPreferences("tapwell", Context.MODE_PRIVATE)
     val portableSetup = PortableSetup(prefs)
     private val boot = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
@@ -349,10 +350,35 @@ internal class Store private constructor(context: Context) {
         val counts = if (now < state.dueAt) listOf(ActivityCount.HABIT_DONE, ActivityCount.HABIT_EARLY)
             else listOf(ActivityCount.HABIT_DONE)
         val next = completeHabit(current, settings, state, now, manualTracking)
-        prefs.edit().putHabit(current, next)
-            .putActivity(current.id, counts, now).apply()
+        val edit = prefs.edit().putHabit(current, next).putActivity(current.id, counts, now)
+        if (current == Habit.WATER) {
+            val event = newWaterEvent(now, settings.servingMl, waterExportEnabled())
+            edit.putString("water_events", encodeWaterEvents(retainWaterEvents(waterEvents(), now) + event))
+        }
+        edit.apply()
+        if (current == Habit.WATER && waterExportEnabled()) WaterHealth.schedule(application)
         return true
     }
+
+    fun waterEvents(): List<WaterEvent> = decodeWaterEvents(prefs.getString("water_events", "[]")!!)
+
+    fun waterExportEnabled(): Boolean = prefs.getBoolean("water_export_enabled", false)
+
+    fun enableWaterExport() {
+        prefs.edit().putBoolean("water_export_enabled", true).apply()
+    }
+
+    fun disconnectWaterExport() {
+        prefs.edit().putBoolean("water_export_enabled", false)
+            .putString("water_events", encodeWaterEvents(disconnectWaterEvents(waterEvents()))).apply()
+    }
+
+    fun markWaterExported(id: String) {
+        prefs.edit().putString("water_events", encodeWaterEvents(markWaterEventExported(waterEvents(), id)))
+            .putLong("water_export_last", System.currentTimeMillis()).apply()
+    }
+
+    fun lastWaterExport(): Long = prefs.getLong("water_export_last", 0)
 
     fun markReminderSent(habit: Habit, state: HabitState, now: Long, posted: Boolean) {
         prefs.edit().putHabit(habit, state.copy(sentAt = now)).apply {

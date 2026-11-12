@@ -460,6 +460,7 @@ private fun SetupPage(
     var nfcAutomation by rememberSaveable { mutableStateOf(false) }
     var deviceAdministration by rememberSaveable { mutableStateOf(false) }
     var googleSync by rememberSaveable { mutableStateOf(false) }
+    var waterHealth by rememberSaveable { mutableStateOf(false) }
     var mealSnoozes by rememberSaveable { mutableStateOf(false) }
     var about by rememberSaveable { mutableStateOf(false) }
     PageHeading("Setup", "Pair your tags and turn on the Android permissions Tapwell uses.")
@@ -479,6 +480,9 @@ private fun SetupPage(
     val googleUser = remember(revision) { activity.store.googleUser() }
     SetupRow("Google account", googleUser?.email ?: "Sign in to sync and restore your Tapwell setup.", "Open", googleUser != null) { googleSync = true }
     if (googleSync) GoogleAccountDialog(activity, dismiss = { googleSync = false })
+    SetupRow("Water & health apps", "Optional water export through Health Connect. Check Samsung Health compatibility.", "Open",
+        activity.store.waterExportEnabled()) { waterHealth = true }
+    if (waterHealth) WaterHealthDialog(activity, dismiss = { waterHealth = false })
     Text("NFC tags", style = MaterialTheme.typography.titleLarge)
     TagRole.entries.forEach { role ->
         val count = remember(revision, role) { activity.store.tags(role.slot).size }

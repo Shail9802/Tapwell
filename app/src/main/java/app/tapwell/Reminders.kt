@@ -246,6 +246,7 @@ class ReminderReceiver : BroadcastReceiver() {
             else -> {
                 if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) migrateLauncherAppearance(context)
                 Reminders.reconcile(context)
+                if (Store.get(context).waterExportEnabled()) WaterHealth.schedule(context)
             }
         }
     }
