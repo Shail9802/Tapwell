@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -55,14 +56,18 @@ internal fun AboutDialog(activity: MainActivity, dismiss: () -> Unit) {
     }
     AlertDialog(
         onDismissRequest = dismiss,
-        icon = { TapIcon(Symbol.BRAND) },
-        title = { Text("About Tapwell") },
+        title = {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.Start) {
+                TapIcon(Symbol.BRAND)
+                Text("About Tapwell")
+            }
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.Start) {
                 Text("Developed with love ❤️ by Shail")
                 version?.let { Text("Version $it", style = MaterialTheme.typography.bodySmall) }
-                TextButton(onClick = { openGitHub("Shail9802") }) { Text("Shail on GitHub") }
-                TextButton(onClick = { openGitHub("Shail9802/Tapwell") }) { Text("View source") }
+                TextButton(onClick = { openGitHub("Shail9802") }, contentPadding = PaddingValues(0.dp)) { Text("Shail on GitHub") }
+                TextButton(onClick = { openGitHub("Shail9802/Tapwell") }, contentPadding = PaddingValues(0.dp)) { Text("View source") }
             }
         },
         confirmButton = { TextButton(onClick = dismiss) { Text("Close") } }
