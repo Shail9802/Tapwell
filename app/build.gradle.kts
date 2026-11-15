@@ -21,8 +21,8 @@ android {
         applicationId = "app.tapwell"
         minSdk = 31
         targetSdk = 36
-        versionCode = 33
-        versionName = "2.9.0"
+        versionCode = 34
+        versionName = "3.0.0"
         buildConfigField("boolean", "SAMSUNG_HEALTH_APPROVED", (samsungSdk != null && samsungApproved).toString())
         resValue("string", "google_web_client_id", providers.gradleProperty("tapwellGoogleWebClientId")
             .getOrElse("722832906948-2226jgg6oogc8unq3608mihn0nl5tgff.apps.googleusercontent.com"))
@@ -53,7 +53,8 @@ dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.09.01"))
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3")
+    // Expressive APIs compatible with the current Compose 1.9 BOM/toolchain.
+    implementation("androidx.compose.material3:material3:1.5.0-alpha03")
     implementation("com.google.android.gms:play-services-auth:22.0.0")
     implementation("androidx.credentials:credentials:1.6.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")

@@ -74,7 +74,7 @@ internal fun SleepRoutine(activity: MainActivity, now: Long) {
     val suggestion = remember(revision) { suggestSleep(sleep.age(), sleep.wake(), nights, zone) }
     Text("Sleep routine", style = MaterialTheme.typography.headlineMedium)
     Text("A steadier rhythm, night by night.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Tonight", style = MaterialTheme.typography.titleMedium)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -99,7 +99,7 @@ internal fun SleepRoutine(activity: MainActivity, now: Long) {
         }
     }
     if (sleep.start() == 0L) {
-        Button(onClick = { sleep.begin(now, zone); revision++; Reminders.reconcile(activity) }) { Text("Start bedtime routine") }
+        ExpressiveAction(onClick = { sleep.begin(now, zone); revision++; Reminders.reconcile(activity) }) { Text("Start bedtime routine") }
         if (activity.store.hasTags(TagRole.FOCUS.slot)) TextButton(onClick = {
             activity.scanRole(TagRole.FOCUS, "Bedtime ritual", "Scan a paired Focus tag to begin quiet hours.") {
                 sleep.begin(System.currentTimeMillis(), zone); revision++; Reminders.reconcile(activity)
@@ -107,7 +107,7 @@ internal fun SleepRoutine(activity: MainActivity, now: Long) {
         }) { Text("Or scan Focus tag") }
     } else {
         Text("Bedtime routine active. This records time in bed, not measured sleep.")
-        Button(onClick = { checkIn = true }) { Text("Morning check-in") }
+        ExpressiveAction(onClick = { checkIn = true }) { Text("Morning check-in") }
         TextButton(onClick = { sleep.extend(now); revision++; Reminders.reconcile(activity) }) { Text("Keep quiet for another hour") }
         TextButton(onClick = { sleep.cancel(); revision++; Reminders.reconcile(activity) }) { Text("Cancel this session") }
     }

@@ -19,6 +19,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Shapes
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -57,6 +62,7 @@ internal enum class Symbol(@param:DrawableRes val drawable: Int) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 internal fun TapTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -73,7 +79,16 @@ internal fun TapTheme(content: @Composable () -> Unit) {
             else -> TapwellLight
         }
     }
-    MaterialTheme(colorScheme = colors, content = content)
+    MaterialExpressiveTheme(
+        colorScheme = colors,
+        motionScheme = MotionScheme.expressive(),
+        shapes = Shapes(
+            extraSmall = RoundedCornerShape(8.dp), small = RoundedCornerShape(12.dp),
+            medium = RoundedCornerShape(20.dp), large = RoundedCornerShape(28.dp),
+            extraLarge = RoundedCornerShape(36.dp)
+        ),
+        content = content
+    )
 }
 
 private const val SAMSUNG_PALETTE_STATE = "wallpapertheme_state"

@@ -216,10 +216,11 @@ internal object TapwellWidgets {
                         else "$logged logged"
                     val tile = RemoteViews(context.packageName, R.layout.widget_habit_tile).apply {
                         setViewLayoutHeight(R.id.widget_habit_tile, tileHeight, TypedValue.COMPLEX_UNIT_DIP)
-                        setImageViewBitmap(R.id.widget_habit_fill, habitFill(context, size.width / grid.columns, tileHeight, progress))
+                        setImageViewBitmap(R.id.widget_habit_fill, habitFill(context, size.width / grid.columns, tileHeight, progress,
+                            if (selected.size == 1) 32f else 20f))
                         setTextViewText(R.id.widget_habit_title, habit.title)
                         setTextViewTextSize(R.id.widget_habit_title, TypedValue.COMPLEX_UNIT_SP,
-                            if (size.width / grid.columns >= 120 && tileHeight >= 72) 18f else 13f)
+                            if (selected.size == 1 && tileHeight >= 100) 24f else if (size.width / grid.columns >= 120 && tileHeight >= 72) 18f else 13f)
                         setTextViewText(R.id.widget_habit_count, text)
                         setTextViewText(R.id.widget_habit_status, status)
                         setViewVisibility(R.id.widget_habit_status, if (tileHeight >= 90) View.VISIBLE else View.GONE)
@@ -236,14 +237,14 @@ internal object TapwellWidgets {
     }
 
     /** Drawn on update, not a continuous animation: wave height represents actual confirmed intake. */
-    private fun habitFill(context: Context, width: Float, height: Float, progress: Float?): Bitmap {
+    private fun habitFill(context: Context, width: Float, height: Float, progress: Float?, corner: Float): Bitmap {
         val bitmap = Bitmap.createBitmap((width * 1.5f).toInt().coerceIn(48, 240),
             (height * 1.5f).toInt().coerceIn(32, 180), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val w = bitmap.width.toFloat()
         val h = bitmap.height.toFloat()
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val clip = Path().apply { addRoundRect(RectF(0f, 0f, w, h), 24f, 24f, Path.Direction.CW) }
+        val clip = Path().apply { addRoundRect(RectF(0f, 0f, w, h), corner * w / width.coerceAtLeast(1f), corner * h / height.coerceAtLeast(1f), Path.Direction.CW) }
         canvas.clipPath(clip)
         paint.color = context.getColor(R.color.widget_surface)
         canvas.drawRect(0f, 0f, w, h, paint)

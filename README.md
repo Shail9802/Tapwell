@@ -24,6 +24,8 @@ Start a bedtime session manually or with an existing Focus NFC tag. The session 
 
 ## Appearance
 
+Tapwell 3.0 adopts Material 3 Expressive: native `MaterialExpressiveTheme`, expressive motion, contrasting corner shapes, prominent habit numbers, press-responsive primary actions and the Material wavy Water progress indicator. Dynamic wallpaper colors and Samsung palette support remain. See [design guidelines](DESIGN.md). The expressive library is pinned to `material3:1.5.0-alpha03` for compatibility with the current Compose toolchain; these APIs are experimental.
+
 The Water habit widget fills upward with a wallpaper-colored wave as confirmed drinks approach the daily goal. For example, 2 L of a 3 L goal fills roughly two-thirds of the tile. Fill is capped at 100%, while the displayed total can exceed the goal. Larger tiles also show a percentage or Goal complete; other habits show their next-reminder/manual-tracking state. The wave is a progress illustration refreshed after data changes, not a continuously running animation. Android may delay background widget refreshes.
 
 **Settings → App → Region & units** follows your phone's country by default, with a searchable country picker and explicit Metric, US customary or Imperial override. India and Canada default to metric; the US defaults to US customary. No location permission or GPS lookup is used. Water goal and drink fields accept decimal mL/L or the selected system's fluid ounces, cups (US), pints and gallons. US and Imperial measures are explicitly distinguished. Work radius supports metres/kilometres or feet/miles. Stored water history and health exports remain in canonical millilitres, so changing display units does not change previous drinks. Regional preferences stay on each phone.

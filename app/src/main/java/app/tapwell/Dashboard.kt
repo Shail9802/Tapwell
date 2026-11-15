@@ -5,6 +5,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -102,13 +111,15 @@ internal fun Dashboard(activity: MainActivity) {
             }
         }
     ) { insets ->
-        androidx.compose.runtime.key(tab) {
+        AnimatedContent(targetState = tab, transitionSpec = {
+            (fadeIn(tween(180)) + slideInVertically(tween(220)) { it / 24 }) togetherWith fadeOut(tween(100))
+        }, label = "destination") { destination ->
             Column(
                 Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(if (destination == Tab.SETUP) 6.dp else 16.dp)
             ) {
-                when (tab) {
+                when (destination) {
                     Tab.FOCUS -> FocusPage(activity, now, blocker, onSetup = { tab = Tab.SETUP })
                     Tab.HABITS -> HabitsPage(activity, now, notify, alarms, onSetup = { tab = Tab.SETUP }, manageTags = { tagSlot = it })
                     Tab.STATS -> ActivityPage(activity, now)
@@ -153,7 +164,7 @@ private fun FocusPage(activity: MainActivity, now: Long, blocker: Boolean, onSet
         }
     ) {
         if (!blocker || !paired) {
-            Button(onClick = onSetup) { Text("Finish setup") }
+            ExpressiveAction(onClick = onSetup) { Text("Finish setup") }
         } else {
             FilledTonalButton(onClick = { durationDialog = true }) { Text("Unlock duration") }
         }
@@ -362,11 +373,12 @@ private fun HabitsPage(
     }
     if (!notify || !alarms) {
         Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = MaterialTheme.shapes.large) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(if (!notify) "Notifications are off" else "Reminder times can drift", style = MaterialTheme.typography.titleMedium)
-                Text(if (!notify) "Turn on notifications to receive reminders." else "Allow exact alarms to improve reminder timing.")
-                TextButton(onClick = onSetup) { Text("Open setup") }
-            }
+            ListItem(
+                headlineContent = { Text(if (!notify) "Notifications are off" else "Improve reminder timing") },
+                supportingContent = { Text(if (!notify) "Allow habit notifications." else "Allow exact alarms in Android.") },
+                trailingContent = { TextButton(onClick = onSetup) { Text("Set up") } },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+            )
         }
     }
     store.habits().forEach { habit ->
@@ -405,6 +417,7 @@ private fun HabitsPage(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun HabitCard(activity: MainActivity, habit: Habit, now: Long, onConfigure: () -> Unit, onManageTags: () -> Unit) {
     val store = activity.store
     val settings = store.habitSettings(habit)
@@ -430,8 +443,9 @@ private fun HabitCard(activity: MainActivity, habit: Habit, now: Long, onConfigu
     }
     FeatureCard(symbol, habit.title, status, habit == Habit.WATER) {
         if (habit == Habit.WATER) {
-            Text("${waterAmount(activity, state.loggedMl)} / ${waterAmount(activity, settings.goalMl)}", style = MaterialTheme.typography.headlineSmall)
-            LinearProgressIndicator(
+            Text(waterAmount(activity, state.loggedMl), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
+            Text("of ${waterAmount(activity, settings.goalMl)} today", style = MaterialTheme.typography.bodyLarge)
+            LinearWavyProgressIndicator(
                 progress = { (state.loggedMl.toFloat() / settings.goalMl).coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -441,15 +455,15 @@ private fun HabitCard(activity: MainActivity, habit: Habit, now: Long, onConfigu
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (needsPairing) {
-                Button(onClick = onManageTags, modifier = Modifier.weight(1f)) { Text("Pair tag") }
+                ExpressiveAction(onClick = onManageTags, modifier = Modifier.weight(1f)) { Text("Pair tag") }
             } else {
-                Button(
+                ExpressiveAction(
                     onClick = { activity.log(habit) },
                     enabled = settings.enabled && (state.dueAt != 0L || habit == Habit.WATER),
                     modifier = Modifier.weight(1f)
                 ) { Text(if (settings.needsNfc) "Scan tag" else "Mark done") }
             }
-            OutlinedButton(onClick = onConfigure, modifier = Modifier.weight(1f)) { Text("Configure") }
+            FilledTonalButton(onClick = onConfigure, modifier = Modifier.weight(1f).heightIn(min = 56.dp), shape = RoundedCornerShape(16.dp)) { Text("Configure") }
         }
         if (settings.needsNfc && !needsPairing) TextButton(onClick = onManageTags) { Text("Tags") }
     }
@@ -547,13 +561,19 @@ private fun SetupPage(
 
 @Composable
 private fun SetupRow(title: String, detail: String, action: String, ready: Boolean, onClick: () -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surface) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = RoundedCornerShape(16.dp)) {
         ListItem(
             modifier = Modifier.clickable(onClickLabel = action, onClick = onClick),
             headlineContent = { Text(title) },
+            leadingContent = { TapIcon(when {
+                title.contains("Water") -> Symbol.WATER
+                title.contains("tag", true) || title.contains("NFC") -> Symbol.TAP
+                title.contains("blocking") -> Symbol.LOCK
+                else -> Symbol.SETTINGS
+            }) },
             supportingContent = { Text(detail, style = MaterialTheme.typography.bodyMedium) },
             trailingContent = { Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
         )
     }
 }
@@ -561,7 +581,7 @@ private fun SetupRow(title: String, detail: String, action: String, ready: Boole
 @Composable
 private fun PageHeading(title: String, body: String) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineMedium)
+        Text(title, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
         Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -577,14 +597,14 @@ private fun FeatureCard(
     val colors = MaterialTheme.colorScheme
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = colors.surfaceContainerLow,
-            contentColor = colors.onSurface
+            containerColor = if (emphasized) colors.primaryContainer else colors.surfaceContainerLow,
+            contentColor = if (emphasized) colors.onPrimaryContainer else colors.onSurface
         ),
         shape = MaterialTheme.shapes.extraLarge
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TapIcon(symbol)
+                IconBadge(symbol, prominent = emphasized)
                 Text(title, style = MaterialTheme.typography.titleMedium)
             }
             Text(description, style = MaterialTheme.typography.bodyMedium)
