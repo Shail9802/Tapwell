@@ -56,7 +56,7 @@ class HabitWidgetConfiguration : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text("Choose widget habits", style = MaterialTheme.typography.headlineSmall)
-                        Text("Resize to show more habits. Swipe up or down for extra pages. NFC habits require a tag, and every log asks for confirmation.")
+                        Text("NFC habits log as soon as you scan a paired tag from the widget. Direct scans outside the widget ask for confirmation.")
                         Text("You can log with reminders off. Long-press the widget and choose Edit to change this selection.")
                         LazyColumn(Modifier.weight(1f)) {
                             items(habits, key = { it.id }) { habit ->
@@ -97,6 +97,7 @@ class HabitWidgetConfiguration : ComponentActivity() {
 }
 
 internal class WidgetHabitActivity : TapActivity() {
+    private var logged = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
@@ -113,23 +114,30 @@ internal class WidgetHabitActivity : TapActivity() {
             finish()
             return
         }
-        fun confirm(tag: ScannedTag?) {
-            if (store.canConfirmHabitLog(habit, tag, manualTracking = true)) {
-                HabitTapActivity.prompt(this, habit, tag, manualTracking = true)
-                finish()
-            } else notice("Pair a tag for this habit in Tapwell.")
+        fun logScan(tag: ScannedTag): String? {
+            if (logged) return null
+            if (!store.logHabit(habit, tag, confirmedOutsideReminder = true, manualTracking = true)) {
+                return "This tag can no longer log this habit."
+            }
+            logged = true
+            Reminders.reconcile(this)
+            finish()
+            return null
         }
         fun startLog() {
-            if (!store.habitSettings(habit).needsNfc) confirm(null)
+            if (!store.habitSettings(habit).needsNfc) {
+                // A one-tap manual tile still gets a confirmation to avoid accidental logs.
+                if (store.canConfirmHabitLog(habit, null, manualTracking = true)) {
+                    HabitTapActivity.prompt(this, habit, null, manualTracking = true)
+                }
+                finish()
+            }
             else if (!store.hasTags(habit.tagSlot)) {
                 notice("Pair a ${habit.tagLabel} tag in Tapwell first.")
                 finish()
             } else scan(habit.tagSlot, "Scan ${habit.tagLabel} tag", "Scan any tag paired to this habit to log it.") { tag ->
                 if (!store.matches(habit.tagSlot, tag)) "This tag is not paired to ${habit.title}."
-                else {
-                    confirm(tag)
-                    null
-                }
+                else logScan(tag)
             }
         }
         setContent {

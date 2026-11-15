@@ -55,9 +55,9 @@ class TagNoticeActivity : Activity() {
                 NfcAdapter.getDefaultAdapter(this)?.ignore(tag, TAG_REMOVAL_DEBOUNCE_MS, null, null)
                 val fresh = TagScanFeedback.show(this, reading, feedback, passive = true)
                 if (fresh && habit != null && slot == habit.tagSlot &&
-                    store.canConfirmHabitLog(habit, reading)
+                    store.canConfirmHabitLog(habit, reading, manualTracking = true)
                 ) {
-                    HabitTapActivity.prompt(this, habit, reading)
+                    HabitTapActivity.prompt(this, habit, reading, manualTracking = true)
                 }
             }
         } catch (_: BadParcelableException) {
