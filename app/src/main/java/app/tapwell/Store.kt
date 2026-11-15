@@ -123,11 +123,10 @@ internal class Store private constructor(context: Context) {
         return entries[tag.code] ?: entries[tag.uid]
     }
 
-    fun enroll(slot: TagSlot, tag: ScannedTag, label: String, replace: PairedTag?, approval: ScannedTag?): String? {
+    fun enroll(slot: TagSlot, tag: ScannedTag, label: String, replace: PairedTag?): String? {
         if (!slotAvailable(slot)) return "This task no longer accepts NFC tags."
         val id = tag.identity ?: return "This tag doesn’t provide an ID."
         val entries = tagEntries(slot)
-        if (entries.isNotEmpty() && approval?.matches(entries.keys) != true) return "Verify a paired tag before adding another."
         if (replace != null && replace.id !in entries) return "This tag is no longer paired."
         if (tag.matches(entries.keys)) return "This tag is already paired here. Tap a different tag."
         val otherSlots = TagRole.entries.map { it.slot } + customHabitIds().map { TagSlot("${it}_tag", "", it) }

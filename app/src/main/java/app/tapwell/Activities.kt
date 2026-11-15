@@ -167,19 +167,10 @@ internal abstract class TapActivity : ComponentActivity() {
     }
 
     fun addTag(slot: TagSlot, label: String, replace: PairedTag? = null) {
-        fun pairNew(approval: ScannedTag?) {
-            val detail = if (approval == null) "Hold the back of your phone near the tag you want to add."
-            else "Lift the first tag, then hold your phone near the new tag."
-            scan(slot, "Pair ${slot.title} tag", detail, label = label) { tag ->
-                val error = store.enroll(slot, tag, label, replace, approval)
-                if (error == null) Reminders.reconcile(this)
-                error
-            }
-        }
-        if (!store.hasTags(slot)) pairNew(null)
-        else verifyTag(slot, "Verify ${slot.title} tag", "Scan any paired tag for this task before adding a new one.") {
-            pairNew(it)
-            null
+        scan(slot, "Pair ${slot.title} tag", "Hold the back of your phone near the new tag.", label = label) { tag ->
+            val error = store.enroll(slot, tag, label, replace)
+            if (error == null) Reminders.reconcile(this)
+            error
         }
     }
 

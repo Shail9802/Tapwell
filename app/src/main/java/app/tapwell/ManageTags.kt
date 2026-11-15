@@ -85,7 +85,7 @@ internal fun ManageTagsDialog(activity: MainActivity, slot: TagSlot, dismiss: ()
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (tags.isNotEmpty()) {
-                    Text("You’ll verify a paired tag before changing the list.", style = MaterialTheme.typography.bodySmall)
+                    Text("Add or replace a tag by scanning the new tag. Removing a tag still asks for a paired tag.", style = MaterialTheme.typography.bodySmall)
                     if (supportsHabitTagRecovery(slot)) {
                         TextButton(onClick = { recovery = true }) { Text("Lost access to these tags?") }
                     }
