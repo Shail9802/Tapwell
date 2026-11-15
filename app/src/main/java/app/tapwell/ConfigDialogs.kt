@@ -224,11 +224,10 @@ internal fun HabitDialog(
     var repeats by rememberSaveable { mutableStateOf(settings.repeats) }
     var repeatSeconds by rememberSaveable { mutableStateOf<Int?>((settings.repeatMillis / 1000).toInt()) }
     var intervalSeconds by rememberSaveable { mutableStateOf<Int?>((settings.intervalMillis / 1000).toInt()) }
-    var goal by rememberSaveable { mutableStateOf(settings.goalMl.toString()) }
-    var serving by rememberSaveable { mutableStateOf(settings.servingMl.toString()) }
+    var goalMl by rememberSaveable { mutableStateOf<Int?>(settings.goalMl) }
+    var servingMl by rememberSaveable { mutableStateOf<Int?>(settings.servingMl) }
+    val unitContext = androidx.compose.ui.platform.LocalContext.current
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
-    val goalMl = goal.toIntOrNull()?.takeIf { it in 1..20000 }
-    val servingMl = serving.toIntOrNull()?.takeIf { it in 1..10000 }
     val valid = title.isNotBlank() && intervalSeconds != null && goalMl != null && servingMl != null &&
         (!repeats || repeatSeconds != null)
     if (confirmDelete) {
@@ -277,8 +276,8 @@ internal fun HabitDialog(
                 }
                 DurationInput((settings.intervalMillis / 1000).toInt(), "Remind after") { intervalSeconds = it }
                 if (habit == Habit.WATER) {
-                    NumberField(goal, { goal = it }, "Daily goal (mL)", "Resets at local midnight")
-                    NumberField(serving, { serving = it }, "Amount per scan (mL)", "One serving per scan")
+                    QuantityInput(settings.goalMl, "Daily water goal", volumeUnits(unitContext), 1, 20000) { goalMl = it }
+                    QuantityInput(settings.servingMl, "Amount per drink", volumeUnits(unitContext), 1, 10000) { servingMl = it }
                 }
                 ToggleRow("Repeat until done", repeats) { repeats = it }
                 if (repeats) {
@@ -297,7 +296,7 @@ internal fun HabitDialog(
             TextButton(onClick = {
                 if (intervalSeconds != null && goalMl != null && servingMl != null) {
                     save(title.trim(), HabitSettings(
-                        enabled = enabled, minutes = ((intervalSeconds ?: 3600) / 60).coerceAtLeast(1), goalMl = goalMl, servingMl = servingMl,
+                        enabled = enabled, minutes = ((intervalSeconds ?: 3600) / 60).coerceAtLeast(1), goalMl = goalMl!!, servingMl = servingMl!!,
                         needsNfc = needsNfc, repeats = repeats, retryMinutes = ((repeatSeconds ?: 300) / 60).coerceIn(1, 1440),
                         intervalSeconds = intervalSeconds, repeatSeconds = repeatSeconds
                     ))
@@ -341,7 +340,8 @@ internal fun WorkDialog(activity: MainActivity, settings: WorkSettings, dismiss:
     var start by rememberSaveable { mutableStateOf(settings.startMinute) }
     var end by rememberSaveable { mutableStateOf(settings.endMinute) }
     var minutesText by rememberSaveable { mutableStateOf(settings.minutes.toString()) }
-    var radiusText by rememberSaveable { mutableStateOf(settings.radiusMeters.toString()) }
+    var radius by rememberSaveable { mutableStateOf<Int?>(settings.radiusMeters) }
+    val unitContext = androidx.compose.ui.platform.LocalContext.current
     var latitude by rememberSaveable { mutableStateOf(settings.latitude) }
     var longitude by rememberSaveable { mutableStateOf(settings.longitude) }
     var working by remember { mutableStateOf(false) }
@@ -349,7 +349,6 @@ internal fun WorkDialog(activity: MainActivity, settings: WorkSettings, dismiss:
     var editingTime by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val minutes = minutesText.toIntOrNull()?.takeIf { it in 1..120 }
-    val radius = radiusText.toIntOrNull()?.takeIf { it in 100..5000 }
     val areaReady = latitude != null && longitude != null
     val valid = minutes != null && radius != null && (!enabled || (days != 0 && start != end && areaReady))
     AlertDialog(
@@ -379,7 +378,7 @@ internal fun WorkDialog(activity: MainActivity, settings: WorkSettings, dismiss:
                 if (end < start) Text("Ends the following day.", style = MaterialTheme.typography.bodySmall)
                 if (start == end) Text("Choose different start and end times.", color = MaterialTheme.colorScheme.error)
                 NumberField(minutesText, { minutesText = it }, "Break length (minutes)", "1–120 minutes, within work hours")
-                NumberField(radiusText, { radiusText = it }, "Work radius (metres)", "100–5,000 metres from the saved point")
+                QuantityInput(settings.radiusMeters, "Work radius", distanceUnits(unitContext), 100, 5000) { radius = it }
                 OutlinedButton(
                     onClick = {
                         activity.withPreciseLocation {
@@ -410,7 +409,7 @@ internal fun WorkDialog(activity: MainActivity, settings: WorkSettings, dismiss:
         confirmButton = {
             TextButton(onClick = {
                 if (minutes != null && radius != null) {
-                    save(WorkSettings(enabled, days, start, end, minutes, latitude, longitude, radius))
+                    save(WorkSettings(enabled, days, start, end, minutes, latitude, longitude, radius!!))
                 }
             }, enabled = valid && !working) { Text("Continue") }
         },

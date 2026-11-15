@@ -30,11 +30,11 @@ class HabitTapActivity : ComponentActivity() {
             else -> "Log ${habit.title}?"
         }
         val detail = when {
-            !settings.enabled && habit == Habit.WATER -> "Add ${settings.servingMl} mL to today’s total with reminders off."
+            !settings.enabled && habit == Habit.WATER -> "Add ${waterAmount(this, settings.servingMl)} to today’s total with reminders off."
             !settings.enabled -> "Log this habit with reminders off."
             habit != Habit.WATER -> "Mark this habit done and restart its reminder interval."
-            store.habitState(habit).loggedMl + settings.servingMl >= settings.goalMl -> "Add ${settings.servingMl} mL to today’s total."
-            else -> "Add ${settings.servingMl} mL and restart your water reminder interval."
+            store.habitState(habit).loggedMl + settings.servingMl >= settings.goalMl -> "Add ${waterAmount(this, settings.servingMl)} to today’s total."
+            else -> "Add ${waterAmount(this, settings.servingMl)} and restart your water reminder interval."
         }
         setContent {
             TapTheme {

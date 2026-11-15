@@ -150,7 +150,7 @@ internal class ReminderActivity : TapActivity() {
                             needsNfc && !ready -> "Turn on NFC to scan your tag."
                             test && needsNfc -> "Tap any paired tag to test NFC. Your timer stays as it is."
                             test -> "This preview tests the alert. Your habit and timer stay as they are."
-                            habit == Habit.WATER -> "Drink ${settings?.servingMl} mL, then hold your phone near your Water tag."
+                            habit == Habit.WATER -> "Drink ${waterAmount(this@ReminderActivity, settings?.servingMl ?: 250)}, then hold your phone near your Water tag."
                             habit == Habit.STAND -> "Stand up, then hold your phone near your Stand tag."
                             needsNfc -> "Hold the back of your phone near the paired tag."
                             else -> "Mark this habit done to restart the timer."

@@ -198,7 +198,8 @@ internal object TapwellWidgets {
                     val logged = counts[habit.id]?.get(ActivityCount.HABIT_DONE) ?: 0
                     val text = if (habit == Habit.WATER) {
                         val amount = store.habitState(habit, now).loggedMl
-                        if (size.width / grid.columns < 110) "$amount mL" else "$amount / ${habitSettings.goalMl} mL"
+                        if (size.width / grid.columns < 110) waterAmount(context, amount)
+                        else "${waterAmount(context, amount)} / ${waterAmount(context, habitSettings.goalMl)}"
                     }
                         else "$logged logged"
                     val tile = RemoteViews(context.packageName, R.layout.widget_habit_tile).apply {

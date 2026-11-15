@@ -197,7 +197,7 @@ internal object Reminders {
         }
         val body = when {
             habit == Habit.WATER ->
-                "Drink ${settings.servingMl} mL and scan your Water tag · ${state.loggedMl} of ${settings.goalMl} mL today"
+                "Drink ${waterAmount(context, settings.servingMl)} and scan your Water tag · ${waterAmount(context, state.loggedMl)} of ${waterAmount(context, settings.goalMl)} today"
             habit == Habit.STAND -> "Stand up, then scan your Stand tag to reset the timer."
             settings.needsNfc -> "Scan your paired tag when you’re done."
             else -> "Open Tapwell to mark this habit done."

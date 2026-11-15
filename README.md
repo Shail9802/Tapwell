@@ -24,6 +24,8 @@ Start a bedtime session manually or with an existing Focus NFC tag. The session 
 
 ## Appearance
 
+**Settings → App → Region & units** follows your phone's country by default, with a searchable country picker and explicit Metric, US customary or Imperial override. India and Canada default to metric; the US defaults to US customary. No location permission or GPS lookup is used. Water goal and drink fields accept decimal mL/L or the selected system's fluid ounces, cups (US), pints and gallons. US and Imperial measures are explicitly distinguished. Work radius supports metres/kilometres or feet/miles. Stored water history and health exports remain in canonical millilitres, so changing display units does not change previous drinks. Regional preferences stay on each phone.
+
 Choose **Settings → App → Time format** for Device, 12-hour or 24-hour clocks. Sleep, meal/work/quiet-hour pickers and next-reminder labels follow this preference. Habit intervals and repeats accept seconds, minutes, hours or days (up to seven days), with existing minute settings preserved. Android may delay short alerts during idle. Update all synced devices to 2.7 or newer before syncing second-precision settings.
 
 Settings uses tappable rows with descriptions and a horizontally scrollable category selector. Advanced NFC/device-administration options are under **App → Advanced device options**. Habit widgets adapt the grid to the selected habits: one fills the widget and two divide its space. Content uses a shared rounded surface with an inset around the edges; overflow habits remain scrollable.

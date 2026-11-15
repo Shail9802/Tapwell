@@ -209,7 +209,7 @@ internal abstract class TapActivity : ComponentActivity() {
             Reminders.reconcile(this)
             if (tag == null) {
                 notice(when (habit) {
-                    Habit.WATER -> "${store.habitSettings(habit).servingMl} mL logged"
+                    Habit.WATER -> "${waterAmount(this, store.habitSettings(habit).servingMl)} logged"
                     Habit.STAND -> "Stand break logged"
                     else -> "${habit.title} marked done"
                 })

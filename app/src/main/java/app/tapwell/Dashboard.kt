@@ -430,13 +430,13 @@ private fun HabitCard(activity: MainActivity, habit: Habit, now: Long, onConfigu
     }
     FeatureCard(symbol, habit.title, status, habit == Habit.WATER) {
         if (habit == Habit.WATER) {
-            Text("${state.loggedMl} / ${settings.goalMl} mL", style = MaterialTheme.typography.headlineSmall)
+            Text("${waterAmount(activity, state.loggedMl)} / ${waterAmount(activity, settings.goalMl)}", style = MaterialTheme.typography.headlineSmall)
             LinearProgressIndicator(
                 progress = { (state.loggedMl.toFloat() / settings.goalMl).coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth()
             )
             val servings = (settings.goalMl + settings.servingMl - 1) / settings.servingMl
-            Text("${settings.servingMl} mL per tap · $servings servings",
+            Text("${waterAmount(activity, settings.servingMl)} per tap · $servings servings",
                 style = MaterialTheme.typography.bodyMedium)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -480,6 +480,7 @@ private fun SetupPage(
     }
     if (section == "App") {
     ClockFormatSetting()
+    RegionalUnitsSetting()
     SetupRow("Colors & app icon", "Follow your wallpaper or choose Tapwell’s colors.", "Open", false) { appearance = true }
     if (appearance) AppearanceDialog(activity, dismiss = { appearance = false })
     TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) "Hide advanced options" else "Advanced device options") }
