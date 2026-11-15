@@ -143,27 +143,45 @@ internal enum class Meal(val title: String, val startMinute: Int, val endMinute:
     DINNER("Dinner", 19 * 60 + 30, 21 * 60 + 30)
 }
 
-internal data class MealSnooze(val enabled: Boolean, val startMinute: Int, val endMinute: Int)
+/** A local-time reminder pause. A lower end time means the pause continues into the next day. */
+internal data class ReminderSnooze(val enabled: Boolean, val startMinute: Int, val endMinute: Int)
 
-internal fun snoozedUntil(windows: List<MealSnooze>, at: Long, zone: ZoneId): Long {
-    val local = Instant.ofEpochMilli(at).atZone(zone)
-    val date = local.toLocalDate()
-    return windows.filter { it.enabled }.mapNotNull { window ->
-        val start = date.atTime(window.startMinute / 60, window.startMinute % 60).atZone(zone).toInstant().toEpochMilli()
-        val end = date.atTime(window.endMinute / 60, window.endMinute % 60).atZone(zone).toInstant().toEpochMilli()
-        end.takeIf { at >= start && at < end }
+internal typealias MealSnooze = ReminderSnooze
+
+internal data class QuietHours(
+    val enabled: Boolean = true,
+    val startMinute: Int = 22 * 60 + 30,
+    val endMinute: Int = 7 * 60
+)
+
+internal fun snoozedUntil(windows: List<ReminderSnooze>, at: Long, zone: ZoneId): Long {
+    val date = Instant.ofEpochMilli(at).atZone(zone).toLocalDate()
+    return windows.filter { it.enabled && it.startMinute != it.endMinute }.mapNotNull { window ->
+        val startDays = if (window.endMinute < window.startMinute) listOf(date.minusDays(1), date) else listOf(date)
+        startDays.mapNotNull { startDay ->
+            val start = startDay.atStartOfDay().plusMinutes(window.startMinute.toLong()).atZone(zone).toInstant().toEpochMilli()
+            val endDay = if (window.endMinute < window.startMinute) startDay.plusDays(1) else startDay
+            val end = endDay.atStartOfDay().plusMinutes(window.endMinute.toLong()).atZone(zone).toInstant().toEpochMilli()
+            end.takeIf { at >= start && at < end }
+        }.maxOrNull()
     }.maxOrNull() ?: 0L
 }
 
-internal fun deferReminder(trigger: Long, now: Long, windows: List<MealSnooze>, zone: ZoneId): Long =
+internal fun quietUntil(hours: QuietHours, at: Long, zone: ZoneId): Long =
+    snoozedUntil(listOf(ReminderSnooze(hours.enabled, hours.startMinute, hours.endMinute)), at, zone)
+
+internal fun deferReminder(trigger: Long, now: Long, windows: List<ReminderSnooze>, zone: ZoneId): Long =
     if (trigger == 0L) 0L else maxOf(trigger, snoozedUntil(windows, maxOf(trigger, now), zone))
 
 internal enum class ActivityCount {
-    FOCUS_PROMPT, FOCUS_LEFT, FOCUS_OPENED, HABIT_ALERT, HABIT_DONE, HABIT_EARLY
+    FOCUS_PROMPT, FOCUS_LEFT, FOCUS_OPENED, HABIT_REMINDER, HABIT_DONE, HABIT_EARLY
 }
 
 internal fun hasPendingAlert(state: HabitState, now: Long): Boolean =
     state.sentAt > 0 && state.dueAt in 1..now
+
+internal fun startsReminderCycle(state: HabitState, posted: Boolean): Boolean =
+    posted && state.sentAt == 0L
 
 internal fun reminderWake(habit: Habit, trigger: Long, now: Long, zone: ZoneId): Long {
     if (habit != Habit.WATER) return trigger

@@ -164,6 +164,49 @@ internal fun MealSnoozeDialog(activity: MainActivity, dismiss: () -> Unit) {
 }
 
 @Composable
+internal fun QuietHoursDialog(activity: MainActivity, dismiss: () -> Unit) {
+    val store = activity.store
+    var hours by remember { mutableStateOf(store.quietHours()) }
+    var editingStart by remember { mutableStateOf<Boolean?>(null) }
+    val valid = hours.startMinute != hours.endMinute
+    AlertDialog(
+        onDismissRequest = dismiss,
+        title = { Text("Sleep quiet hours") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Habit notifications, pop-ups, NFC prompts, and repeat counts pause overnight. A due habit reminds you once quiet hours end.")
+                ToggleRow("Pause overnight", hours.enabled) { hours = hours.copy(enabled = it) }
+                if (hours.enabled) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { editingStart = true }) { Text("Starts ${clockLabel(hours.startMinute)}") }
+                        TextButton(onClick = { editingStart = false }) { Text("Ends ${clockLabel(hours.endMinute)}") }
+                    }
+                }
+                if (!valid) Text("Choose different start and end times.", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = valid, onClick = {
+                store.saveQuietHours(hours)
+                Reminders.reconcile(activity)
+                dismiss()
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } }
+    )
+    editingStart?.let { start ->
+        ClockDialog(
+            if (start) "Quiet hours start" else "Quiet hours end",
+            if (start) hours.startMinute else hours.endMinute,
+            dismiss = { editingStart = null }
+        ) { minute ->
+            hours = if (start) hours.copy(startMinute = minute) else hours.copy(endMinute = minute)
+            editingStart = null
+        }
+    }
+}
+
+@Composable
 internal fun HabitDialog(
     habit: Habit?,
     settings: HabitSettings,
@@ -376,7 +419,7 @@ internal fun WorkDialog(activity: MainActivity, settings: WorkSettings, dismiss:
         dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } }
     )
     editingTime?.let { label ->
-        ClockDialog(label, if (label == "Start") start else end, dismiss = { editingTime = null }) {
+        ClockDialog("$label of work window", if (label == "Start") start else end, dismiss = { editingTime = null }) {
             if (label == "Start") start = it else end = it
             editingTime = null
         }
@@ -389,7 +432,7 @@ private fun ClockDialog(label: String, minute: Int, dismiss: () -> Unit, save: (
     val time = rememberTimePickerState(minute / 60, minute % 60, is24Hour = true)
     AlertDialog(
         onDismissRequest = dismiss,
-        title = { Text("$label of work window") },
+        title = { Text(label) },
         text = { TimeInput(state = time) },
         confirmButton = { TextButton(onClick = { save(time.hour * 60 + time.minute) }) { Text("Set time") } },
         dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } }

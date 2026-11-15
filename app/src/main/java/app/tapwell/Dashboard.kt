@@ -324,7 +324,7 @@ private fun ActivityPage(activity: MainActivity, now: Long) {
         title = "Habit activity",
         history = history,
         metrics = listOf(
-            ChartMetric(ActivityCount.HABIT_ALERT, "Alerts", colors.primary),
+            ChartMetric(ActivityCount.HABIT_REMINDER, "Reminder cycles", colors.primary),
             ChartMetric(ActivityCount.HABIT_DONE, "Logged", colors.tertiary),
             ChartMetric(ActivityCount.HABIT_EARLY, "Logged early", colors.secondary)
         )
@@ -335,13 +335,13 @@ private fun ActivityPage(activity: MainActivity, now: Long) {
             ListItem(
                 headlineContent = { Text(habit.title) },
                 supportingContent = {
-                    Text("${counts[ActivityCount.HABIT_ALERT] ?: 0} alerts · ${counts[ActivityCount.HABIT_DONE] ?: 0} logged · ${counts[ActivityCount.HABIT_EARLY] ?: 0} logged early")
+                    Text("${counts[ActivityCount.HABIT_REMINDER] ?: 0} reminder cycles · ${counts[ActivityCount.HABIT_DONE] ?: 0} logged · ${counts[ActivityCount.HABIT_EARLY] ?: 0} logged early")
                 },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
             )
         }
     }
-    Text("Counts are kept on this phone. Opened counts launches from a Focus prompt. Alerts include repeats.",
+    Text("Counts are kept on this phone. A reminder cycle is counted once when a habit becomes due; retries and quiet hours do not add to it.",
         style = MaterialTheme.typography.bodySmall)
 }
 
@@ -407,10 +407,15 @@ private fun HabitCard(activity: MainActivity, habit: Habit, now: Long, onConfigu
     val settings = store.habitSettings(habit)
     val state = store.habitState(habit, now)
     val needsPairing = settings.needsNfc && !store.hasTags(habit.tagSlot)
+    val zone = ZoneId.systemDefault()
+    val pausedUntil = snoozedUntil(store.reminderSnoozes(), now, zone)
+    val sleepEnds = quietUntil(store.quietHours(), now, zone)
     val status = when {
         !settings.enabled -> "Paused · every ${settings.minutes} min when on"
         needsPairing -> "Pair a tag to start reminders"
         state.dueAt == 0L -> "Daily goal complete"
+        state.dueAt <= now && sleepEnds > now -> "Quiet until ${formatReminderTime(sleepEnds, now)}"
+        state.dueAt <= now && pausedUntil > now -> "Paused until ${formatReminderTime(pausedUntil, now)}"
         state.dueAt <= now && settings.repeats -> "Waiting for completion · repeats every ${settings.retryMinutes} min"
         state.dueAt <= now -> "Waiting for completion"
         else -> "Next reminder · ${formatReminderTime(state.dueAt, now)}"
@@ -461,6 +466,7 @@ private fun SetupPage(
     var deviceAdministration by rememberSaveable { mutableStateOf(false) }
     var googleSync by rememberSaveable { mutableStateOf(false) }
     var waterHealth by rememberSaveable { mutableStateOf(false) }
+    var quietHours by rememberSaveable { mutableStateOf(false) }
     var mealSnoozes by rememberSaveable { mutableStateOf(false) }
     var about by rememberSaveable { mutableStateOf(false) }
     PageHeading("Setup", "Pair your tags and turn on the Android permissions Tapwell uses.")
@@ -474,6 +480,9 @@ private fun SetupPage(
     if (deviceAdministration) DeviceAdministrationDialog(activity, dismiss = { deviceAdministration = false })
     SetupRow("Reminder alerts", "Choose a gentle chime or vibration only, and send a test alert.", "Open", false) { alertSettings = true }
     if (alertSettings) ReminderAlertsDialog(activity, dismiss = { alertSettings = false })
+    SetupRow("Sleep quiet hours", "Pause habit reminders overnight. Default: 22:30–07:00.", "Open",
+        activity.store.quietHours().enabled) { quietHours = true }
+    if (quietHours) QuietHoursDialog(activity, dismiss = { quietHours = false })
     SetupRow("Meal snooze", "Pause habit alerts during lunch and dinner.", "Open",
         activity.store.mealSnoozes().any { it.enabled }) { mealSnoozes = true }
     if (mealSnoozes) MealSnoozeDialog(activity, dismiss = { mealSnoozes = false })

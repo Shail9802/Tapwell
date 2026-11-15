@@ -21,8 +21,8 @@ android {
         applicationId = "app.tapwell"
         minSdk = 31
         targetSdk = 36
-        versionCode = 24
-        versionName = "2.4.0"
+        versionCode = 25
+        versionName = "2.4.1"
         buildConfigField("boolean", "SAMSUNG_HEALTH_APPROVED", (samsungSdk != null && samsungApproved).toString())
         resValue("string", "google_web_client_id", providers.gradleProperty("tapwellGoogleWebClientId")
             .getOrElse("722832906948-2226jgg6oogc8unq3608mihn0nl5tgff.apps.googleusercontent.com"))

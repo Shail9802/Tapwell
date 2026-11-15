@@ -72,6 +72,24 @@ internal class Store private constructor(context: Context) {
         }.apply()
     }
 
+    fun quietHours(): QuietHours = QuietHours(
+        enabled = prefs.getBoolean("quiet_hours_enabled", true),
+        startMinute = prefs.getInt("quiet_hours_start", 22 * 60 + 30).coerceIn(0, 1439),
+        endMinute = prefs.getInt("quiet_hours_end", 7 * 60).coerceIn(0, 1439)
+    )
+
+    fun saveQuietHours(hours: QuietHours) {
+        if (hours.startMinute !in 0..1439 || hours.endMinute !in 0..1439 || hours.startMinute == hours.endMinute) return
+        prefs.edit()
+            .putBoolean("quiet_hours_enabled", hours.enabled)
+            .putInt("quiet_hours_start", hours.startMinute)
+            .putInt("quiet_hours_end", hours.endMinute)
+            .apply()
+    }
+
+    fun reminderSnoozes(): List<ReminderSnooze> =
+        mealSnoozes() + quietHours().let { ReminderSnooze(it.enabled, it.startMinute, it.endMinute) }
+
     fun dailyLimit(target: String): Int = prefs.getInt("daily_limit_$target", 0)
 
     fun saveDailyLimit(target: String, minutes: Int) {
@@ -397,7 +415,9 @@ internal class Store private constructor(context: Context) {
 
     fun markReminderSent(habit: Habit, state: HabitState, now: Long, posted: Boolean) {
         prefs.edit().putHabit(habit, state.copy(sentAt = now)).apply {
-            if (posted) putActivity(habit.id, listOf(ActivityCount.HABIT_ALERT), now)
+            // A retry is delivery, not a new reminder cycle. This keeps Activity useful instead of
+            // turning a missed night of sleep into hundreds of "alerts".
+            if (startsReminderCycle(state, posted)) putActivity(habit.id, listOf(ActivityCount.HABIT_REMINDER), now)
         }.apply()
     }
 

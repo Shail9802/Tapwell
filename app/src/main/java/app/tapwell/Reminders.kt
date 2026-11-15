@@ -35,7 +35,9 @@ internal object Reminders {
         val notifications = context.getSystemService(NotificationManager::class.java)
         val now = System.currentTimeMillis()
         val zone = ZoneId.systemDefault()
-        val snoozes = store.mealSnoozes()
+        val snoozes = store.reminderSnoozes()
+        val pausedNow = snoozedUntil(snoozes, now, zone)
+        val sleepEnds = quietUntil(store.quietHours(), now, zone)
         val popups = arrayListOf<String>()
         for (habit in store.habits()) {
             val settings = store.habitSettings(habit)
@@ -46,6 +48,9 @@ internal object Reminders {
                 continue
             }
             val state = store.habitState(habit, now)
+            // Do not leave an older ongoing Water notification visible throughout sleep either.
+            // Its due state remains intact and a single notification is posted after quiet hours.
+            if (sleepEnds > now) notifications.cancel(notificationTag(habit), notificationId(habit))
             var trigger = deferReminder(reminderTrigger(settings, state), now, snoozes, zone)
             if (state.sentAt == 0L) notifications.cancel(notificationTag(habit), notificationId(habit))
             if (trigger in 1..now) {
@@ -57,7 +62,7 @@ internal object Reminders {
                 } else {
                     trigger = now + DEFAULT_RETRY_MINUTES * MINUTE
                 }
-            } else if (habit == Habit.WATER && hasPendingAlert(state, now) &&
+            } else if (pausedNow == 0L && habit == Habit.WATER && hasPendingAlert(state, now) &&
                 notificationsAllowed(context) && notifications.activeNotifications.none {
                     it.id == notificationId(Habit.WATER) && it.notification.deleteIntent != null
                 }
@@ -119,18 +124,23 @@ internal object Reminders {
     }
 
     fun restoreWaterReminder(context: Context) {
-        if (!notificationsAllowed(context)) return
         val habit = Habit.WATER
         val store = Store.get(context)
         val settings = store.habitSettings(habit)
         val now = System.currentTimeMillis()
         val state = store.habitState(habit, now)
         if (!store.habitReady(habit, settings) || !hasPendingAlert(state, now)) return
+        val zone = ZoneId.systemDefault()
+        if (snoozedUntil(store.reminderSnoozes(), now, zone) > now) {
+            // Schedule the wake boundary instead of recreating a dismissed Water notification
+            // during a meal or overnight quiet hours.
+            reconcile(context)
+            return
+        }
+        if (!notificationsAllowed(context)) return
         val manager = context.getSystemService(NotificationManager::class.java)
         val importance = notify(context, manager, habit, settings, state, restored = true)
-        if (importance >= NotificationManager.IMPORTANCE_DEFAULT &&
-            snoozedUntil(store.mealSnoozes(), now, ZoneId.systemDefault()) == 0L
-        ) {
+        if (importance >= NotificationManager.IMPORTANCE_DEFAULT) {
             showPopup(context, manager, reminderScreen(context).putExtra(ReminderActivity.EXTRA_HABIT, habit.id))
         }
     }

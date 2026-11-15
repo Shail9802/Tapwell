@@ -191,6 +191,32 @@ class RulesTest {
     }
 
     @Test
+    fun sleepQuietHoursDefersOvernightAlertsToTheWakeTime() {
+        val hours = QuietHours(enabled = true, startMinute = 22 * 60 + 30, endMinute = 7 * 60)
+        val windows = listOf(ReminderSnooze(hours.enabled, hours.startMinute, hours.endMinute))
+        val tuesday = monday.plusDays(1)
+        fun at(day: LocalDate, hour: Int, minute: Int = 0) =
+            day.atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()
+
+        assertEquals(0L, quietUntil(hours, at(monday, 22, 29), zone))
+        assertEquals(at(tuesday, 7), quietUntil(hours, at(monday, 22, 30), zone))
+        assertEquals(at(tuesday, 7), quietUntil(hours, at(tuesday, 6, 59), zone))
+        assertEquals(0L, quietUntil(hours, at(tuesday, 7), zone))
+        assertEquals(0L, quietUntil(hours.copy(enabled = false), at(monday, 23), zone))
+        assertEquals(at(tuesday, 7), deferReminder(at(monday, 21), at(monday, 23), windows, zone))
+        assertEquals(at(tuesday, 7), deferReminder(at(tuesday, 6, 45), at(tuesday, 6, 45), windows, zone))
+    }
+
+    @Test
+    fun onlyTheFirstPostedAlertStartsAReminderCycle() {
+        val due = HabitState(monday, dueAt = morning)
+        val retry = due.copy(sentAt = morning)
+        assertTrue(startsReminderCycle(due, posted = true))
+        assertFalse(startsReminderCycle(due, posted = false))
+        assertFalse(startsReminderCycle(retry, posted = true))
+    }
+
+    @Test
     fun earlyDrinkRestartsTheFullIntervalAndCountsOneServing() {
         val settings = HabitSettings(enabled = true, minutes = 60, servingMl = 250)
         val early = morning + 15 * MINUTE
