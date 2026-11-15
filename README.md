@@ -24,6 +24,8 @@ Start a bedtime session manually or with an existing Focus NFC tag. The session 
 
 ## Appearance
 
+The Water habit widget fills upward with a wallpaper-colored wave as confirmed drinks approach the daily goal. For example, 2 L of a 3 L goal fills roughly two-thirds of the tile. Fill is capped at 100%, while the displayed total can exceed the goal. Larger tiles also show a percentage or Goal complete; other habits show their next-reminder/manual-tracking state. The wave is a progress illustration refreshed after data changes, not a continuously running animation. Android may delay background widget refreshes.
+
 **Settings → App → Region & units** follows your phone's country by default, with a searchable country picker and explicit Metric, US customary or Imperial override. India and Canada default to metric; the US defaults to US customary. No location permission or GPS lookup is used. Water goal and drink fields accept decimal mL/L or the selected system's fluid ounces, cups (US), pints and gallons. US and Imperial measures are explicitly distinguished. Work radius supports metres/kilometres or feet/miles. Stored water history and health exports remain in canonical millilitres, so changing display units does not change previous drinks. Regional preferences stay on each phone.
 
 Choose **Settings → App → Time format** for Device, 12-hour or 24-hour clocks. Sleep, meal/work/quiet-hour pickers and next-reminder labels follow this preference. Habit intervals and repeats accept seconds, minutes, hours or days (up to seven days), with existing minute settings preserved. Android may delay short alerts during idle. Update all synced devices to 2.7 or newer before syncing second-precision settings.

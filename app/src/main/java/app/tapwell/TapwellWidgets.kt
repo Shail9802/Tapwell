@@ -9,6 +9,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -166,7 +168,7 @@ internal object TapwellWidgets {
             else habitWidgetGrid(size.width, size.height, settings.cellWidth(id), settings.cellHeight(id))
         val grid = filledHabitGrid(space, selected.size)
         val header = false // Launcher Edit remains available; the content gets the whole surface.
-        val inset = if (size.width < 90 || size.height < 90) 8 else 16
+        val inset = if (selected.size == 1) 0 else 8
         val pageHeight = (size.height - 2 * inset).coerceAtLeast(28f)
         val configure = PendingIntent.getActivity(context, id,
             Intent(context, HabitWidgetConfiguration::class.java)
@@ -195,7 +197,17 @@ internal object TapwellWidgets {
                 val tileHeight = ((pageHeight - (grid.rows - 1) * 4) / grid.rows).coerceAtLeast(28f)
                 for ((index, habit) in selected.withIndex()) {
                     val habitSettings = store.habitSettings(habit)
+                    val state = store.habitState(habit, now)
                     val logged = counts[habit.id]?.get(ActivityCount.HABIT_DONE) ?: 0
+                    val progress = if (habit == Habit.WATER) waterGoalProgress(state.loggedMl, habitSettings.goalMl) else null
+                    val status = when {
+                        progress != null && progress >= 1f -> "Goal complete"
+                        progress != null -> "${(progress * 100).toInt()}% of daily goal"
+                        !store.habitReady(habit, habitSettings) -> "Manual tracking"
+                        state.dueAt in 1..now -> "Ready to complete"
+                        state.dueAt > now -> "Next in ${timeLeft(state.dueAt - now)}"
+                        else -> "Up to date"
+                    }
                     val text = if (habit == Habit.WATER) {
                         val amount = store.habitState(habit, now).loggedMl
                         if (size.width / grid.columns < 110) waterAmount(context, amount)
@@ -204,13 +216,16 @@ internal object TapwellWidgets {
                         else "$logged logged"
                     val tile = RemoteViews(context.packageName, R.layout.widget_habit_tile).apply {
                         setViewLayoutHeight(R.id.widget_habit_tile, tileHeight, TypedValue.COMPLEX_UNIT_DIP)
+                        setImageViewBitmap(R.id.widget_habit_fill, habitFill(context, size.width / grid.columns, tileHeight, progress))
                         setTextViewText(R.id.widget_habit_title, habit.title)
                         setTextViewTextSize(R.id.widget_habit_title, TypedValue.COMPLEX_UNIT_SP,
                             if (size.width / grid.columns >= 120 && tileHeight >= 72) 18f else 13f)
                         setTextViewText(R.id.widget_habit_count, text)
+                        setTextViewText(R.id.widget_habit_status, status)
+                        setViewVisibility(R.id.widget_habit_status, if (tileHeight >= 90) View.VISIBLE else View.GONE)
                         setViewVisibility(R.id.widget_habit_count, if (tileHeight < 48) View.GONE else View.VISIBLE)
                         setContentDescription(R.id.widget_habit_tile,
-                            "${habit.title}, $text. ${if (habitSettings.needsNfc) "Scan tag to log." else "Tap to log."} Swipe up or down for more habits.")
+                            "${habit.title}, $text. $status. ${if (habitSettings.needsNfc) "Scan tag to log." else "Tap to log."} Swipe up or down for more habits.")
                         setOnClickFillInIntent(R.id.widget_habit_tile, Intent().putExtra("habit", habit.id))
                     }
                     collection.addItem(index.toLong(), tile)
@@ -218,6 +233,38 @@ internal object TapwellWidgets {
                 setRemoteAdapter(R.id.widget_pages, collection.build())
             }
         }
+    }
+
+    /** Drawn on update, not a continuous animation: wave height represents actual confirmed intake. */
+    private fun habitFill(context: Context, width: Float, height: Float, progress: Float?): Bitmap {
+        val bitmap = Bitmap.createBitmap((width * 1.5f).toInt().coerceIn(48, 240),
+            (height * 1.5f).toInt().coerceIn(32, 180), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val w = bitmap.width.toFloat()
+        val h = bitmap.height.toFloat()
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val clip = Path().apply { addRoundRect(RectF(0f, 0f, w, h), 24f, 24f, Path.Direction.CW) }
+        canvas.clipPath(clip)
+        paint.color = context.getColor(R.color.widget_surface)
+        canvas.drawRect(0f, 0f, w, h, paint)
+        if (progress != null && progress > 0f) {
+            val level = h * (1f - progress)
+            val amplitude = minOf(5f, h * progress / 2, h * (1 - progress) / 2)
+            for (layer in 0..1) {
+                val wave = Path().apply {
+                    moveTo(0f, h)
+                    for (x in 0..bitmap.width step 2) {
+                        val y = level + kotlin.math.sin(x / w * Math.PI * 2 + layer * 1.5).toFloat() * amplitude
+                        lineTo(x.toFloat(), y)
+                    }
+                    lineTo(w, level); lineTo(w, h); close()
+                }
+                paint.color = context.getColor(R.color.widget_tile)
+                paint.alpha = if (layer == 0) 120 else 255
+                canvas.drawPath(wave, paint)
+            }
+        }
+        return bitmap
     }
 
     private fun activityViews(context: Context, id: Int, size: SizeF, data: WidgetActivityData): RemoteViews {
