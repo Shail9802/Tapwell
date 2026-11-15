@@ -16,6 +16,12 @@ Tapwell was vibe coded with AI assistance. The app is open source under the [MIT
 - **Google account and backup.** Sign in with Google and approve private Drive sync for the same account to restore core app rules, NFC pairings, and habit settings on another phone. Official APK users do not need a Cloud project or OAuth client.
 - **Optional water export.** Share newly confirmed Water drinks with Health Connect using water-write permission only. Samsung Health water import depends on its hydration support; direct Samsung Health integration is not included.
 
+## Sleep routine
+
+The Sleep tab provides a suggested bedtime, wind-down time, wake time and duration target. Set your age and preferred wake time before using the plan. A local nearest-neighbour estimate uses up to seven well-rested diary entries near your preferred wake time, with age-based duration bounds; it uses a starting target until three suitable entries exist. Earlier bedtime changes advance by up to 15 minutes. Suggestions require your approval through **Apply plan to quiet hours**.
+
+Start a bedtime session manually or with an existing Focus NFC tag. The session pauses habit reminders until your selected wake time; extend it by an hour when needed. Confirm and correct sleep times and a rested rating in the morning. The last seven nights appear as a bar chart and diary. The diary retains up to 90 entries locally, has a delete control, and is excluded from Drive sync and health exports. This first version learns from your confirmed diary; automatic phone-activity estimates, scheduled wind-down notifications, and sleep-specific Focus blocking are not yet included. It does not measure sleep or diagnose sleep disorders.
+
 ## Appearance
 
 Tapwell uses Jetpack Compose Material 3 with the phone’s dynamic colors and light or dark appearance.

@@ -36,8 +36,9 @@ internal object Reminders {
         val now = System.currentTimeMillis()
         val zone = ZoneId.systemDefault()
         val snoozes = store.reminderSnoozes()
-        val pausedNow = snoozedUntil(snoozes, now, zone)
-        val sleepEnds = quietUntil(store.quietHours(), now, zone)
+        val sessionEnds = store.sleepSessionUntil().takeIf { it > now } ?: 0L
+        val pausedNow = maxOf(snoozedUntil(snoozes, now, zone), sessionEnds)
+        val sleepEnds = maxOf(quietUntil(store.quietHours(), now, zone), sessionEnds)
         val popups = arrayListOf<String>()
         for (habit in store.habits()) {
             val settings = store.habitSettings(habit)
@@ -52,6 +53,7 @@ internal object Reminders {
             // Its due state remains intact and a single notification is posted after quiet hours.
             if (sleepEnds > now) notifications.cancel(notificationTag(habit), notificationId(habit))
             var trigger = deferReminder(reminderTrigger(settings, state), now, snoozes, zone)
+            if (trigger > 0 && sessionEnds > now) trigger = maxOf(trigger, sessionEnds)
             if (state.sentAt == 0L) notifications.cancel(notificationTag(habit), notificationId(habit))
             if (trigger in 1..now) {
                 if (notificationsAllowed(context)) {
@@ -131,7 +133,7 @@ internal object Reminders {
         val state = store.habitState(habit, now)
         if (!store.habitReady(habit, settings) || !hasPendingAlert(state, now)) return
         val zone = ZoneId.systemDefault()
-        if (snoozedUntil(store.reminderSnoozes(), now, zone) > now) {
+        if (snoozedUntil(store.reminderSnoozes(), now, zone) > now || store.sleepSessionUntil() > now) {
             // Schedule the wake boundary instead of recreating a dismissed Water notification
             // during a meal or overnight quiet hours.
             reconcile(context)

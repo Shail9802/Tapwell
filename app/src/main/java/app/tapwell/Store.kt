@@ -90,6 +90,8 @@ internal class Store private constructor(context: Context) {
     fun reminderSnoozes(): List<ReminderSnooze> =
         mealSnoozes() + quietHours().let { ReminderSnooze(it.enabled, it.startMinute, it.endMinute) }
 
+    fun sleepSessionUntil(): Long = SleepStore(application).quietUntil()
+
     fun dailyLimit(target: String): Int = prefs.getInt("daily_limit_$target", 0)
 
     fun saveDailyLimit(target: String, minutes: Int) {

@@ -56,7 +56,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private enum class Tab(val title: String, val symbol: Symbol) {
-    FOCUS("Focus", Symbol.LOCK), HABITS("Habits", Symbol.HABITS),
+    FOCUS("Focus", Symbol.LOCK), HABITS("Habits", Symbol.HABITS), SLEEP("Sleep", Symbol.STAND),
     STATS("Activity", Symbol.TAP), SETUP("Setup", Symbol.SETTINGS)
 }
 
@@ -110,6 +110,7 @@ internal fun Dashboard(activity: MainActivity) {
                     Tab.FOCUS -> FocusPage(activity, now, blocker, onSetup = { tab = Tab.SETUP })
                     Tab.HABITS -> HabitsPage(activity, now, notify, alarms, onSetup = { tab = Tab.SETUP }, manageTags = { tagSlot = it })
                     Tab.STATS -> ActivityPage(activity, now)
+                    Tab.SLEEP -> SleepRoutine(activity, now)
                     Tab.SETUP -> SetupPage(activity, blocker, nfc, notify, alarms, popups, manageTags = { tagSlot = it })
                 }
                 Spacer(Modifier.padding(bottom = 4.dp))
