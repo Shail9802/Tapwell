@@ -287,7 +287,9 @@ internal class Store private constructor(context: Context) {
             servingMl = prefs.getInt("${key}_serving", 250),
             needsNfc = habit.role != null || prefs.getBoolean("${key}_needs_nfc", false),
             repeats = prefs.getBoolean("${key}_repeats", true),
-            retryMinutes = prefs.getInt("${key}_retry_minutes", DEFAULT_RETRY_MINUTES)
+            retryMinutes = prefs.getInt("${key}_retry_minutes", DEFAULT_RETRY_MINUTES),
+            intervalSeconds = if (prefs.contains("${key}_interval_seconds")) prefs.getInt("${key}_interval_seconds", 3600) else null,
+            repeatSeconds = if (prefs.contains("${key}_repeat_seconds")) prefs.getInt("${key}_repeat_seconds", 300) else null
         )
     }
 
@@ -299,8 +301,8 @@ internal class Store private constructor(context: Context) {
         val savedSettings = if (habit.role != null) settings.copy(needsNfc = true) else settings
         val old = habitSettings(habit)
         val state = habitState(habit, now)
-        val updated = if (state.dueAt > now && old.minutes != settings.minutes) {
-            state.copy(dueAt = now + settings.minutes * MINUTE)
+        val updated = if (state.dueAt > now && old.intervalMillis != settings.intervalMillis) {
+            state.copy(dueAt = now + settings.intervalMillis)
         } else state
         val key = habit.id
         val effective = savedSettings.copy(enabled = habitReady(habit, savedSettings))
@@ -317,6 +319,10 @@ internal class Store private constructor(context: Context) {
             .putBoolean("${key}_needs_nfc", savedSettings.needsNfc)
             .putBoolean("${key}_repeats", savedSettings.repeats)
             .putInt("${key}_retry_minutes", savedSettings.retryMinutes)
+            .apply {
+                if (savedSettings.intervalSeconds == null) remove("${key}_interval_seconds") else putInt("${key}_interval_seconds", savedSettings.intervalSeconds)
+                if (savedSettings.repeatSeconds == null) remove("${key}_repeat_seconds") else putInt("${key}_repeat_seconds", savedSettings.repeatSeconds)
+            }
             .putHabit(habit, refreshHabit(habit, effective, updated, now, ZoneId.systemDefault()))
             .apply()
     }
@@ -326,7 +332,7 @@ internal class Store private constructor(context: Context) {
         val key = habit.id
         prefs.edit().putStringSet("custom_habits", customHabitIds() - key).apply {
             listOf("title", "tag", "tag_list", "enabled", "minutes", "goal", "serving", "needs_nfc", "repeats",
-                "retry_minutes", "day", "logged", "due", "sent", "retry").forEach { remove("${key}_$it") }
+                "retry_minutes", "interval_seconds", "repeat_seconds", "day", "logged", "due", "sent", "retry").forEach { remove("${key}_$it") }
         }.apply()
     }
 

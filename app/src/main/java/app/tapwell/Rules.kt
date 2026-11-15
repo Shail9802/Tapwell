@@ -58,8 +58,13 @@ internal data class HabitSettings(
     val servingMl: Int = 250,
     val needsNfc: Boolean = true,
     val repeats: Boolean = true,
-    val retryMinutes: Int = DEFAULT_RETRY_MINUTES
-)
+    val retryMinutes: Int = DEFAULT_RETRY_MINUTES,
+    val intervalSeconds: Int? = null,
+    val repeatSeconds: Int? = null
+) {
+    val intervalMillis: Long get() = (intervalSeconds ?: minutes * 60) * 1000L
+    val repeatMillis: Long get() = (repeatSeconds ?: retryMinutes * 60) * 1000L
+}
 
 internal data class HabitState(
     val day: LocalDate,
@@ -112,12 +117,12 @@ internal fun refreshHabit(
     if (!settings.enabled) return HabitState(today, if (state.day == today) state.loggedMl else 0)
     val reset = if (habit == Habit.WATER && today != state.day) {
         val midnight = today.atStartOfDay(zone).toInstant().toEpochMilli()
-        HabitState(today, dueAt = midnight + settings.minutes * MINUTE)
+        HabitState(today, dueAt = midnight + settings.intervalMillis)
     } else state
     if (habit == Habit.WATER && reset.loggedMl >= settings.goalMl) {
         return reset.copy(dueAt = 0, sentAt = 0)
     }
-    return if (reset.dueAt == 0L) reset.copy(dueAt = now + settings.minutes * MINUTE) else reset
+    return if (reset.dueAt == 0L) reset.copy(dueAt = now + settings.intervalMillis) else reset
 }
 
 internal fun completeHabit(
@@ -125,7 +130,7 @@ internal fun completeHabit(
 ): HabitState {
     val logged = if (habit == Habit.WATER) state.loggedMl + settings.servingMl else 0
     val due = if ((manualTracking && !settings.enabled) || (habit == Habit.WATER && logged >= settings.goalMl)) 0
-        else now + settings.minutes * MINUTE
+        else now + settings.intervalMillis
     return state.copy(loggedMl = logged, dueAt = due, sentAt = 0)
 }
 
@@ -134,7 +139,7 @@ internal fun acceptsCompletion(settings: HabitSettings, pairedTags: Set<String>,
 
 internal fun reminderTrigger(settings: HabitSettings, state: HabitState): Long = when {
     state.sentAt == 0L -> state.dueAt
-    settings.repeats -> state.sentAt + settings.retryMinutes * MINUTE
+    settings.repeats -> state.sentAt + settings.repeatMillis
     else -> 0
 }
 

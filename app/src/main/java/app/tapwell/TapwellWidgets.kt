@@ -316,7 +316,7 @@ private data class WidgetActivityData(
                 "${targetLabel(context, target)} · $detail"
             }.take(3).joinToString("\n")
             return WidgetActivityData(dates, logged, opened, summary, limits,
-                java.time.Instant.ofEpochMilli(now).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm")))
+                java.time.Instant.ofEpochMilli(now).atZone(zone).let { clockText(context, it.hour * 60 + it.minute) })
         }
     }
 }

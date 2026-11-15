@@ -144,6 +144,16 @@ class RulesTest {
     }
 
     @Test
+    fun secondAndDayIntervalsKeepTheirPrecision() {
+        val short = HabitSettings(enabled = true, intervalSeconds = 30, repeatSeconds = 10)
+        val state = refreshHabit(Habit.STAND, short, HabitState(monday), morning, zone)
+        assertEquals(morning + 30_000L, state.dueAt)
+        assertEquals(morning + 40_000L, reminderTrigger(short, state.copy(sentAt = state.dueAt)))
+        val daily = short.copy(intervalSeconds = 86400)
+        assertEquals(morning + 86400_000L, completeHabit(Habit.STAND, daily, state, morning).dueAt)
+    }
+
+    @Test
     fun nfcHabitAcceptsEitherPairedTagAndManualHabitUsesManualCompletion() {
         val nfc = HabitSettings(needsNfc = true)
         val paired = setOf("home", "work")

@@ -78,10 +78,10 @@ internal fun SleepRoutine(activity: MainActivity, now: Long) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Tonight", style = MaterialTheme.typography.titleMedium)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column { Text("Bedtime", style = MaterialTheme.typography.labelMedium); Text(sleepClock(suggestion.bedtime), style = MaterialTheme.typography.headlineLarge) }
-                Column { Text("Wake up", style = MaterialTheme.typography.labelMedium); Text(sleepClock(suggestion.wake), style = MaterialTheme.typography.headlineLarge) }
+                Column { Text("Bedtime", style = MaterialTheme.typography.labelMedium); Text(clockText(activity, suggestion.bedtime), style = MaterialTheme.typography.headlineSmall) }
+                Column { Text("Wake up", style = MaterialTheme.typography.labelMedium); Text(clockText(activity, suggestion.wake), style = MaterialTheme.typography.headlineSmall) }
             }
-            Text("${suggestion.duration / 60} h ${suggestion.duration % 60} min target · Wind down ${sleepClock(Math.floorMod(suggestion.bedtime - 30, 1440))}", style = MaterialTheme.typography.bodyMedium)
+            Text("${durationText(suggestion.duration * MINUTE)} target · Wind down ${clockText(activity, Math.floorMod(suggestion.bedtime - 30, 1440))}", style = MaterialTheme.typography.bodyMedium)
             TextButton(onClick = { details = !details }) { Text(if (details) "Hide plan details" else "About this plan") }
             if (details) {
             Text(if (suggestion.samples < 3) "Starting target for age ${sleep.age()}. Log at least three well-rested nights to personalise duration."
@@ -130,18 +130,21 @@ internal fun SleepRoutine(activity: MainActivity, now: Long) {
     if (configure) {
         var age by remember { mutableStateOf(sleep.age().toString()) }
         var wake by remember { mutableStateOf(sleepClock(sleep.wake())) }
+        var pickWake by remember { mutableStateOf(false) }
         val validAge = age.toIntOrNull()?.takeIf { it in 13..100 }
         val validWake = parseSleepClock(wake)
         AlertDialog(onDismissRequest = { configure = false }, title = { Text("Your sleep goal") }, text = {
-            Column { OutlinedTextField(age, { age = it }, label = { Text("Age (13–100)") }); OutlinedTextField(wake, { wake = it }, label = { Text("Wake time (HH:mm)") }) }
+            Column { OutlinedTextField(age, { age = it }, label = { Text("Age (13–100)") }); TextButton(onClick = { pickWake = true }) { Text("Wake up · ${clockText(activity, validWake ?: sleep.wake())}") } }
         }, confirmButton = { TextButton(enabled = validAge != null && validWake != null, onClick = {
             sleep.save(validAge!!, validWake!!); revision++; configure = false
         }) { Text("Save") } }, dismissButton = { TextButton(onClick = { configure = false }) { Text("Cancel") } })
+        if (pickWake) ClockDialog("Wake-up time", validWake ?: sleep.wake(), { pickWake = false }) { wake = sleepClock(it); pickWake = false }
     }
     if (checkIn) {
         var start by remember { mutableStateOf(sleepClock(Instant.ofEpochMilli(sleep.start()).atZone(zone).let { it.hour * 60 + it.minute })) }
         var end by remember { mutableStateOf(sleepClock(Instant.ofEpochMilli(now).atZone(zone).let { it.hour * 60 + it.minute })) }
         var rested by remember { mutableStateOf(3) }
+        var pickTime by remember { mutableStateOf<String?>(null) }
         val s = parseSleepClock(start)
         val e = parseSleepClock(end)
         val endDay = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
@@ -150,14 +153,18 @@ internal fun SleepRoutine(activity: MainActivity, now: Long) {
         AlertDialog(onDismissRequest = { checkIn = false }, title = { Text("Confirm your sleep") }, text = {
             Column {
                 Text("Correct the estimated times. End date: $endDay. Start is the previous day when it is later than the end time.")
-                OutlinedTextField(start, { start = it }, label = { Text("Fell asleep (HH:mm)") })
-                OutlinedTextField(end, { end = it }, label = { Text("Woke up (HH:mm)") })
+                TextButton(onClick = { pickTime = "start" }) { Text("Fell asleep · ${clockText(activity, s ?: 0)}") }
+                TextButton(onClick = { pickTime = "end" }) { Text("Woke up · ${clockText(activity, e ?: 0)}") }
                 Text("How rested? $rested/5")
                 Slider(rested.toFloat(), { rested = it.toInt() }, valueRange = 1f..5f, steps = 3)
             }
         }, confirmButton = { TextButton(enabled = s != e && startAt != null && endAt != null && endAt > startAt && endAt <= now, onClick = {
             sleep.finish(startAt!!, endAt!!, rested); revision++; checkIn = false; Reminders.reconcile(activity)
         }) { Text("Save night") } }, dismissButton = { TextButton(onClick = { checkIn = false }) { Text("Cancel") } })
+        pickTime?.let { field -> ClockDialog(if (field == "start") "Fell asleep" else "Woke up", if (field == "start") s ?: 0 else e ?: 0, { pickTime = null }) {
+            if (field == "start") start = sleepClock(it) else end = sleepClock(it)
+            pickTime = null
+        } }
     }
     if (clear) AlertDialog(onDismissRequest = { clear = false }, title = { Text("Delete sleep data?") }, text = { Text("Removes the local diary, active session and sleep preferences. Applied quiet hours remain in Setup.") }, confirmButton = {
         TextButton(onClick = { sleep.clear(); revision++; clear = false; Reminders.reconcile(activity) }) { Text("Delete") }

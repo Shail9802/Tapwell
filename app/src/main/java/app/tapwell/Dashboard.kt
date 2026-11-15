@@ -414,12 +414,12 @@ private fun HabitCard(activity: MainActivity, habit: Habit, now: Long, onConfigu
     val pausedUntil = snoozedUntil(store.reminderSnoozes(), now, zone)
     val sleepEnds = quietUntil(store.quietHours(), now, zone)
     val status = when {
-        !settings.enabled -> "Paused · every ${settings.minutes} min when on"
+        !settings.enabled -> "Paused · every ${durationText(settings.intervalMillis)} when on"
         needsPairing -> "Pair a tag to start reminders"
         state.dueAt == 0L -> "Daily goal complete"
         state.dueAt <= now && sleepEnds > now -> "Quiet until ${formatReminderTime(sleepEnds, now)}"
         state.dueAt <= now && pausedUntil > now -> "Paused until ${formatReminderTime(pausedUntil, now)}"
-        state.dueAt <= now && settings.repeats -> "Waiting for completion · repeats every ${settings.retryMinutes} min"
+        state.dueAt <= now && settings.repeats -> "Waiting for completion · repeats every ${durationText(settings.repeatMillis)}"
         state.dueAt <= now -> "Waiting for completion"
         else -> "Next reminder · ${formatReminderTime(state.dueAt, now)}"
     }
@@ -479,6 +479,7 @@ private fun SetupPage(
         }
     }
     if (section == "App") {
+    ClockFormatSetting()
     SetupRow("Colors & app icon", "Follow your wallpaper or choose Tapwell’s colors.", "Open", false) { appearance = true }
     if (appearance) AppearanceDialog(activity, dismiss = { appearance = false })
     TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) "Hide advanced options" else "Advanced device options") }
@@ -495,7 +496,7 @@ private fun SetupPage(
     SetupRow("Sound & vibration", "Choose how your reminders feel and sound.", "Open", false) { alertSettings = true }
     if (alertSettings) ReminderAlertsDialog(activity, dismiss = { alertSettings = false })
     val hours = activity.store.quietHours()
-    SetupRow("Quiet hours", if (hours.enabled) "Reminders pause ${sleepClock(hours.startMinute)}–${sleepClock(hours.endMinute)}." else "Let your reminders rest while you sleep.", "Open",
+    SetupRow("Quiet hours", if (hours.enabled) "Reminders pause ${clockText(activity, hours.startMinute)}–${clockText(activity, hours.endMinute)}." else "Let your reminders rest while you sleep.", "Open",
         activity.store.quietHours().enabled) { quietHours = true }
     if (quietHours) QuietHoursDialog(activity, dismiss = { quietHours = false })
     SetupRow("Meal breaks", "Pause reminders during lunch and dinner.", "Open",
@@ -650,9 +651,11 @@ internal fun timeLeft(millis: Long): String {
     return if (minutes >= 60) "${minutes / 60} hr ${minutes % 60} min" else "$minutes min"
 }
 
+@Composable
 private fun formatReminderTime(millis: Long, now: Long): String {
     val zone = ZoneId.systemDefault()
     val due = Instant.ofEpochMilli(millis).atZone(zone)
-    val pattern = if (due.toLocalDate() == localDay(now, zone)) "h:mm a" else "EEE, d MMM 'at' h:mm a"
+    val clock = if (uses24Hours(androidx.compose.ui.platform.LocalContext.current)) "HH:mm" else "h:mm a"
+    val pattern = if (due.toLocalDate() == localDay(now, zone)) clock else "EEE, d MMM 'at' $clock"
     return due.format(DateTimeFormatter.ofPattern(pattern))
 }

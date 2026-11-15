@@ -126,7 +126,7 @@ private fun clearDeadline(edit: SharedPreferences.Editor, key: String) {
 private val uuid = Regex("[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
 private fun customId(id: String) = uuid.matches(id)
 private fun customGroup(group: String) = group.startsWith("habit:") && customId(group.removePrefix("habit:"))
-private fun habitKeys(id: String) = listOf("enabled", "minutes", "goal", "serving", "needs_nfc", "repeats", "retry_minutes")
+private fun habitKeys(id: String) = listOf("enabled", "minutes", "goal", "serving", "needs_nfc", "repeats", "retry_minutes", "interval_seconds", "repeat_seconds")
     .map { "${id}_$it" }
 
 private val fixedGroups = mapOf(
@@ -190,6 +190,7 @@ private fun decodeGroup(group: String, encoded: String): Map<String, Any> {
                     "work_days" -> 0..127
                     "work_radius" -> 100..5000
                     else -> when {
+                        key.endsWith("_seconds") -> 1..604800
                         key.endsWith("_retry_minutes") -> 1..1440
                         key.endsWith("_goal") -> 1..20000
                         key.endsWith("_serving") -> 1..10000

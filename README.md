@@ -24,6 +24,8 @@ Start a bedtime session manually or with an existing Focus NFC tag. The session 
 
 ## Appearance
 
+Choose **Settings → App → Time format** for Device, 12-hour or 24-hour clocks. Sleep, meal/work/quiet-hour pickers and next-reminder labels follow this preference. Habit intervals and repeats accept seconds, minutes, hours or days (up to seven days), with existing minute settings preserved. Android may delay short alerts during idle. Update all synced devices to 2.7 or newer before syncing second-precision settings.
+
 Settings uses tappable rows with descriptions and a horizontally scrollable category selector. Advanced NFC/device-administration options are under **App → Advanced device options**. Habit widgets adapt the grid to the selected habits: one fills the widget and two divide its space. Content uses a shared rounded surface with an inset around the edges; overflow habits remain scrollable.
 
 Version 2.6 groups Setup into **Reminders**, **Tags**, **Permissions** and **App** categories. Sleep plan explanations expand through **About this plan**. Widget detail adapts to available space: compact Activity widgets show daily totals, medium widgets add the seven-day chart, and tall widgets can show daily limits. Open Activity in the app for the complete dashboard.

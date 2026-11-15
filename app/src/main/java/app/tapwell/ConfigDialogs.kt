@@ -222,18 +222,15 @@ internal fun HabitDialog(
     var enabled by rememberSaveable { mutableStateOf(settings.enabled) }
     var needsNfc by rememberSaveable { mutableStateOf(settings.needsNfc) }
     var repeats by rememberSaveable { mutableStateOf(settings.repeats) }
-    var retry by rememberSaveable { mutableStateOf(settings.retryMinutes.toString()) }
-    var interval by rememberSaveable { mutableStateOf(settings.minutes.toString()) }
+    var repeatSeconds by rememberSaveable { mutableStateOf<Int?>((settings.repeatMillis / 1000).toInt()) }
+    var intervalSeconds by rememberSaveable { mutableStateOf<Int?>((settings.intervalMillis / 1000).toInt()) }
     var goal by rememberSaveable { mutableStateOf(settings.goalMl.toString()) }
     var serving by rememberSaveable { mutableStateOf(settings.servingMl.toString()) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
-    val maxInterval = if (custom) 10080 else 720
-    val minutes = interval.toIntOrNull()?.takeIf { it in 1..maxInterval }
-    val retryMinutes = retry.toIntOrNull()?.takeIf { it in 1..1440 }
     val goalMl = goal.toIntOrNull()?.takeIf { it in 1..20000 }
     val servingMl = serving.toIntOrNull()?.takeIf { it in 1..10000 }
-    val valid = title.isNotBlank() && minutes != null && goalMl != null && servingMl != null &&
-        (!repeats || retryMinutes != null)
+    val valid = title.isNotBlank() && intervalSeconds != null && goalMl != null && servingMl != null &&
+        (!repeats || repeatSeconds != null)
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
@@ -278,14 +275,14 @@ internal fun HabitDialog(
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                NumberField(interval, { interval = it }, "Interval (minutes)", "1–$maxInterval minutes after completion")
+                DurationInput((settings.intervalMillis / 1000).toInt(), "Remind after") { intervalSeconds = it }
                 if (habit == Habit.WATER) {
                     NumberField(goal, { goal = it }, "Daily goal (mL)", "Resets at local midnight")
                     NumberField(serving, { serving = it }, "Amount per scan (mL)", "One serving per scan")
                 }
                 ToggleRow("Repeat until done", repeats) { repeats = it }
                 if (repeats) {
-                    NumberField(retry, { retry = it }, "Repeat every (minutes)", "1–1,440 minutes after an alert")
+                    DurationInput((settings.repeatMillis / 1000).toInt(), "Repeat every") { repeatSeconds = it }
                 } else {
                     Text("Send one alert and wait for completion.", style = MaterialTheme.typography.bodySmall)
                 }
@@ -298,10 +295,11 @@ internal fun HabitDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                if (minutes != null && goalMl != null && servingMl != null) {
+                if (intervalSeconds != null && goalMl != null && servingMl != null) {
                     save(title.trim(), HabitSettings(
-                        enabled = enabled, minutes = minutes, goalMl = goalMl, servingMl = servingMl,
-                        needsNfc = needsNfc, repeats = repeats, retryMinutes = retryMinutes ?: settings.retryMinutes
+                        enabled = enabled, minutes = ((intervalSeconds ?: 3600) / 60).coerceAtLeast(1), goalMl = goalMl, servingMl = servingMl,
+                        needsNfc = needsNfc, repeats = repeats, retryMinutes = ((repeatSeconds ?: 300) / 60).coerceIn(1, 1440),
+                        intervalSeconds = intervalSeconds, repeatSeconds = repeatSeconds
                     ))
                 }
             }, enabled = valid) { Text("Save") }
@@ -428,8 +426,9 @@ internal fun WorkDialog(activity: MainActivity, settings: WorkSettings, dismiss:
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ClockDialog(label: String, minute: Int, dismiss: () -> Unit, save: (Int) -> Unit) {
-    val time = rememberTimePickerState(minute / 60, minute % 60, is24Hour = true)
+internal fun ClockDialog(label: String, minute: Int, dismiss: () -> Unit, save: (Int) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val time = rememberTimePickerState(minute / 60, minute % 60, is24Hour = uses24Hours(context))
     AlertDialog(
         onDismissRequest = dismiss,
         title = { Text(label) },
@@ -460,4 +459,5 @@ private fun ToggleRow(label: String, value: Boolean, enabled: Boolean = true, ch
     }
 }
 
-private fun clockLabel(minutes: Int): String = "%02d:%02d".format(minutes / 60, minutes % 60)
+@Composable
+private fun clockLabel(minutes: Int): String = clockText(androidx.compose.ui.platform.LocalContext.current, minutes)

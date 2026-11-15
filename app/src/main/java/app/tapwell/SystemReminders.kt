@@ -21,7 +21,7 @@ internal enum class ReminderDestination(val label: String) {
         val now = System.currentTimeMillis()
         val store = activity.store
         val settings = store.habitSettings(habit)
-        val due = store.habitState(habit, now).dueAt.takeIf { it > now } ?: (now + settings.minutes * MINUTE)
+        val due = store.habitState(habit, now).dueAt.takeIf { it > now } ?: (now + settings.intervalMillis)
         val detail = if (settings.needsNfc) "Complete in Tapwell with your paired NFC tag."
             else "Complete in Tapwell to restart the habit timer."
         val title = when (habit) {
