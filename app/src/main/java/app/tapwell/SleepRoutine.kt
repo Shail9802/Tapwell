@@ -68,34 +68,43 @@ internal fun SleepRoutine(activity: MainActivity, now: Long) {
     var configure by remember { mutableStateOf(!sleep.configured()) }
     var checkIn by remember { mutableStateOf(false) }
     var clear by remember { mutableStateOf(false) }
+    var details by remember { mutableStateOf(false) }
     val nights = remember(revision) { sleep.nights() }
     val zone = ZoneId.systemDefault()
     val suggestion = remember(revision) { suggestSleep(sleep.age(), sleep.wake(), nights, zone) }
     Text("Sleep routine", style = MaterialTheme.typography.headlineMedium)
-    Text("Build a steady bedtime and wake-up routine. Your sleep diary and learning stay on this phone.")
+    Text("A steadier rhythm, night by night.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Tonight’s suggested plan", style = MaterialTheme.typography.titleLarge)
-            Text("Wind down ${sleepClock(Math.floorMod(suggestion.bedtime - 30, 1440))} · Bed ${sleepClock(suggestion.bedtime)} · Wake ${sleepClock(suggestion.wake)}")
-            Text("Duration target: ${suggestion.duration / 60} h ${suggestion.duration % 60} min")
+            Text("Tonight", style = MaterialTheme.typography.titleMedium)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column { Text("Bedtime", style = MaterialTheme.typography.labelMedium); Text(sleepClock(suggestion.bedtime), style = MaterialTheme.typography.headlineLarge) }
+                Column { Text("Wake up", style = MaterialTheme.typography.labelMedium); Text(sleepClock(suggestion.wake), style = MaterialTheme.typography.headlineLarge) }
+            }
+            Text("${suggestion.duration / 60} h ${suggestion.duration % 60} min target · Wind down ${sleepClock(Math.floorMod(suggestion.bedtime - 30, 1440))}", style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = { details = !details }) { Text(if (details) "Hide plan details" else "About this plan") }
+            if (details) {
             Text(if (suggestion.samples < 3) "Starting target for age ${sleep.age()}. Log at least three well-rested nights to personalise duration."
                 else "Local nearest-neighbour estimate from ${suggestion.samples} well-rested nights near your chosen wake time. Confidence: limited; confirm how you feel.")
             Text("When moving bedtime earlier, suggestions advance by up to 15 minutes per step. A transition night may still fall short of your duration target.")
-            TextButton(onClick = { configure = true }) { Text("Age & wake time") }
+            }
+            Row {
+            TextButton(onClick = { configure = true }) { Text("Edit goal") }
             TextButton(onClick = {
                 activity.store.saveQuietHours(QuietHours(true, suggestion.bedtime, suggestion.wake))
                 Reminders.reconcile(activity)
                 activity.notice("Suggested quiet hours applied")
-            }) { Text("Apply plan to quiet hours") }
+            }) { Text("Use quiet hours") }
+            }
         }
     }
     if (sleep.start() == 0L) {
         Button(onClick = { sleep.begin(now, zone); revision++; Reminders.reconcile(activity) }) { Text("Start bedtime routine") }
-        if (activity.store.hasTags(TagRole.FOCUS.slot)) OutlinedButton(onClick = {
+        if (activity.store.hasTags(TagRole.FOCUS.slot)) TextButton(onClick = {
             activity.scanRole(TagRole.FOCUS, "Bedtime ritual", "Scan a paired Focus tag to begin quiet hours.") {
                 sleep.begin(System.currentTimeMillis(), zone); revision++; Reminders.reconcile(activity)
             }
-        }) { Text("Start with Focus NFC tag") }
+        }) { Text("Or scan Focus tag") }
     } else {
         Text("Bedtime routine active. This records time in bed, not measured sleep.")
         Button(onClick = { checkIn = true }) { Text("Morning check-in") }
@@ -105,7 +114,7 @@ internal fun SleepRoutine(activity: MainActivity, now: Long) {
     Text("Last seven nights", style = MaterialTheme.typography.titleLarge)
     val recent = nights.takeLast(7)
     val color = MaterialTheme.colorScheme.primary
-    Canvas(Modifier.fillMaxWidth().height(110.dp)) {
+    if (recent.isNotEmpty()) Canvas(Modifier.fillMaxWidth().height(110.dp)) {
         recent.forEachIndexed { i, night ->
             val width = size.width / 7
             val height = size.height * (night.minutes / 720f).coerceIn(0f, 1f)
@@ -116,8 +125,8 @@ internal fun SleepRoutine(activity: MainActivity, now: Long) {
     recent.reversed().forEach {
         Text("${Instant.ofEpochMilli(it.end).atZone(zone).toLocalDate()} · ${it.minutes / 60} h ${it.minutes % 60} min · Rested ${it.rested}/5")
     }
-    Text("Adult baseline: at least 7 hours regularly; teenagers generally need 8–10 hours. Keep bed and wake times consistent. Suggestions support routines and do not diagnose sleep problems.", style = MaterialTheme.typography.bodySmall)
-    TextButton(onClick = { clear = true }) { Text("Delete sleep diary & preferences") }
+    if (details) Text("Adult baseline: at least 7 hours regularly; teenagers generally need 8–10 hours. Suggestions support routines and do not diagnose sleep problems.", style = MaterialTheme.typography.bodySmall)
+    TextButton(onClick = { clear = true }) { Text("Manage sleep data") }
     if (configure) {
         var age by remember { mutableStateOf(sleep.age().toString()) }
         var wake by remember { mutableStateOf(sleepClock(sleep.wake())) }

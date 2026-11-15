@@ -136,7 +136,7 @@ private fun FocusPage(activity: MainActivity, now: Long, blocker: Boolean, onSet
     var addTarget by rememberSaveable { mutableStateOf<String?>(null) }
     var limitTarget by rememberSaveable { mutableStateOf<String?>(null) }
 
-    PageHeading("Focus", "Put a physical tap between you and the apps you want to spend less time in.")
+    PageHeading("Focus", "A little space from your apps.")
     FeatureCard(
         Symbol.LOCK,
         when {
@@ -289,7 +289,7 @@ private fun ActivityPage(activity: MainActivity, now: Long) {
         }
         counts
     }
-    PageHeading("Activity", "See screen time, Focus activity, and habit logs.")
+    PageHeading("Activity", "Your day at a glance.")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(days == 1, { days = 1 }, label = { Text("Today") })
         FilterChip(days == 7, { days = 7 }, label = { Text("Last 7 days") })
@@ -353,7 +353,7 @@ private fun HabitsPage(
 ) {
     val store = activity.store
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
-    PageHeading("Habits", "Set reminders for your routines and choose how to complete them.")
+    PageHeading("Habits", "Small routines, one tap at a time.")
     FilledTonalButton(onClick = { editingId = "" }) {
         TapIcon(Symbol.PLUS)
         Text("Add habit", Modifier.padding(start = 4.dp))
@@ -434,7 +434,7 @@ private fun HabitCard(activity: MainActivity, habit: Habit, now: Long, onConfigu
                 modifier = Modifier.fillMaxWidth()
             )
             val servings = (settings.goalMl + settings.servingMl - 1) / settings.servingMl
-            Text("${settings.servingMl} mL per scan · $servings ${if (servings == 1) "serving" else "servings"} per day",
+            Text("${settings.servingMl} mL per tap · $servings servings",
                 style = MaterialTheme.typography.bodyMedium)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -449,9 +449,7 @@ private fun HabitCard(activity: MainActivity, habit: Habit, now: Long, onConfigu
             }
             OutlinedButton(onClick = onConfigure, modifier = Modifier.weight(1f)) { Text("Configure") }
         }
-        if (settings.needsNfc && !needsPairing) {
-            TextButton(onClick = onManageTags) { Text("Manage tags") }
-        }
+        if (settings.needsNfc && !needsPairing) TextButton(onClick = onManageTags) { Text("Tags") }
     }
 }
 
@@ -470,7 +468,14 @@ private fun SetupPage(
     var quietHours by rememberSaveable { mutableStateOf(false) }
     var mealSnoozes by rememberSaveable { mutableStateOf(false) }
     var about by rememberSaveable { mutableStateOf(false) }
-    PageHeading("Setup", "Pair your tags and turn on the Android permissions Tapwell uses.")
+    var section by rememberSaveable { mutableStateOf("Reminders") }
+    PageHeading("Setup", "Make Tapwell yours.")
+    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf("Reminders", "Tags", "Permissions", "App").forEach { name ->
+            FilterChip(section == name, { section = name }, label = { Text(name) })
+        }
+    }
+    if (section == "App") {
     SetupRow("Appearance", "Choose Monet colors and your launcher icon.", "Open", false) { appearance = true }
     if (appearance) AppearanceDialog(activity, dismiss = { appearance = false })
     SetupRow("NFC automation", "Set up Samsung routines or direct NFC control.", "Open", false) { nfcAutomation = true }
@@ -479,6 +484,8 @@ private fun SetupPage(
         deviceAdministration = true
     }
     if (deviceAdministration) DeviceAdministrationDialog(activity, dismiss = { deviceAdministration = false })
+    }
+    if (section == "Reminders") {
     SetupRow("Reminder alerts", "Choose a gentle chime or vibration only, and send a test alert.", "Open", false) { alertSettings = true }
     if (alertSettings) ReminderAlertsDialog(activity, dismiss = { alertSettings = false })
     SetupRow("Sleep quiet hours", "Pause habit reminders overnight. Default: 22:30–07:00.", "Open",
@@ -487,13 +494,16 @@ private fun SetupPage(
     SetupRow("Meal snooze", "Pause habit alerts during lunch and dinner.", "Open",
         activity.store.mealSnoozes().any { it.enabled }) { mealSnoozes = true }
     if (mealSnoozes) MealSnoozeDialog(activity, dismiss = { mealSnoozes = false })
+    }
+    if (section == "App") {
     val googleUser = remember(revision) { activity.store.googleUser() }
     SetupRow("Google account", googleUser?.email ?: "Sign in to sync and restore your Tapwell setup.", "Open", googleUser != null) { googleSync = true }
     if (googleSync) GoogleAccountDialog(activity, dismiss = { googleSync = false })
     SetupRow("Water & health apps", "Optional water export through Health Connect. Check Samsung Health compatibility.", "Open",
         activity.store.waterExportEnabled()) { waterHealth = true }
     if (waterHealth) WaterHealthDialog(activity, dismiss = { waterHealth = false })
-    Text("NFC tags", style = MaterialTheme.typography.titleLarge)
+    }
+    if (section == "Tags") {
     TagRole.entries.forEach { role ->
         val count = remember(revision, role) { activity.store.tags(role.slot).size }
         val detail = when (role) {
@@ -504,7 +514,8 @@ private fun SetupPage(
         val status = if (count == 0) detail else "$detail · $count paired"
         SetupRow("${role.title} tags", status, if (count > 0) "Manage" else "Pair", count > 0) { manageTags(role.slot) }
     }
-    Text("Permissions", style = MaterialTheme.typography.titleLarge)
+    }
+    if (section == "Permissions") {
     SetupRow("Accessibility", "Detects locked apps and the visible Shorts player on your phone.", "Open", blocker) {
         activity.openSettings(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
@@ -518,8 +529,11 @@ private fun SetupPage(
     SetupRow("Reminder pop-ups", "Allow Tapwell to show the reminder screen over apps and on the lock screen.", "Open", popups) {
         activity.openSettings(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${activity.packageName}")))
     }
+    }
+    if (section == "App") {
     SetupRow("About", "Meet the developer and find Tapwell’s source code.", "Open", false) { about = true }
     if (about) AboutDialog(activity, dismiss = { about = false })
+    }
 }
 
 @Composable
@@ -527,7 +541,7 @@ private fun SetupRow(title: String, detail: String, action: String, ready: Boole
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.large) {
         ListItem(
             headlineContent = { Text(title) },
-            supportingContent = { Text("${if (ready) "Ready · " else ""}$detail") },
+            supportingContent = { Text(if (ready) "Ready · $detail" else detail, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
             trailingContent = { TextButton(onClick = onClick) { Text(action) } },
             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
         )
@@ -537,8 +551,8 @@ private fun SetupRow(title: String, detail: String, action: String, ready: Boole
 @Composable
 private fun PageHeading(title: String, body: String) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
-        Text(title, style = MaterialTheme.typography.displaySmall)
-        Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, style = MaterialTheme.typography.headlineMedium)
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -553,15 +567,15 @@ private fun FeatureCard(
     val colors = MaterialTheme.colorScheme
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (emphasized) colors.primaryContainer else colors.surfaceContainerLow,
-            contentColor = if (emphasized) colors.onPrimaryContainer else colors.onSurface
+            containerColor = colors.surfaceContainerLow,
+            contentColor = colors.onSurface
         ),
         shape = MaterialTheme.shapes.extraLarge
     ) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                IconBadge(symbol, prominent = emphasized)
-                Text(title, style = MaterialTheme.typography.titleLarge)
+                TapIcon(symbol)
+                Text(title, style = MaterialTheme.typography.titleMedium)
             }
             Text(description, style = MaterialTheme.typography.bodyMedium)
             content()

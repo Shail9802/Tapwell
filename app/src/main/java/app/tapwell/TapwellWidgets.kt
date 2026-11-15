@@ -164,7 +164,7 @@ internal object TapwellWidgets {
         val rows = options.getInt("semAppWidgetRowSpan", 0)
         val grid = if (columns in 1..6 && rows in 1..6) HabitWidgetGrid(columns, rows)
             else habitWidgetGrid(size.width, size.height, settings.cellWidth(id), settings.cellHeight(id))
-        val header = grid.rows > 1 && size.width >= 120
+        val header = grid.rows > 1 && size.width >= 200 && size.height >= 180
         val pageHeight = (size.height - 12 - if (header) 32 else 0).coerceAtLeast(36f)
         val configure = PendingIntent.getActivity(context, id,
             Intent(context, HabitWidgetConfiguration::class.java)
@@ -192,12 +192,16 @@ internal object TapwellWidgets {
                 for ((index, habit) in selected.withIndex()) {
                     val habitSettings = store.habitSettings(habit)
                     val logged = counts[habit.id]?.get(ActivityCount.HABIT_DONE) ?: 0
-                    val text = if (habit == Habit.WATER) "${store.habitState(habit, now).loggedMl} / ${habitSettings.goalMl} mL"
+                    val text = if (habit == Habit.WATER) {
+                        val amount = store.habitState(habit, now).loggedMl
+                        if (size.width / grid.columns < 110) "$amount mL" else "$amount / ${habitSettings.goalMl} mL"
+                    }
                         else "$logged logged"
                     val tile = RemoteViews(context.packageName, R.layout.widget_habit_tile).apply {
                         setViewLayoutHeight(R.id.widget_habit_tile, tileHeight, TypedValue.COMPLEX_UNIT_DIP)
                         setTextViewText(R.id.widget_habit_title, habit.title)
                         setTextViewText(R.id.widget_habit_count, text)
+                        setViewVisibility(R.id.widget_habit_count, if (tileHeight < 48) View.GONE else View.VISIBLE)
                         setContentDescription(R.id.widget_habit_tile,
                             "${habit.title}, $text. ${if (habitSettings.needsNfc) "Scan tag to log." else "Tap to log."} Swipe up or down for more habits.")
                         setOnClickFillInIntent(R.id.widget_habit_tile, Intent().putExtra("habit", habit.id))
@@ -210,7 +214,8 @@ internal object TapwellWidgets {
     }
 
     private fun activityViews(context: Context, id: Int, size: SizeF, data: WidgetActivityData): RemoteViews {
-        val compact = size.height < 140 || size.width < 120
+        val compact = size.height < 180 || size.width < 180
+        val spacious = size.height >= 260 && size.width >= 240
         val open = PendingIntent.getActivity(context, id,
             Intent(context, MainActivity::class.java)
                 .setData(Uri.parse("tapwell-widget://activity/$id"))
@@ -221,22 +226,22 @@ internal object TapwellWidgets {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return RemoteViews(context.packageName, R.layout.widget_activity).apply {
             setOnClickPendingIntent(R.id.widget_root, open)
+            setViewVisibility(R.id.widget_activity_header, if (size.height < 90) View.GONE else View.VISIBLE)
+            setTextViewTextSize(R.id.widget_summary, TypedValue.COMPLEX_UNIT_SP, if (size.width < 120) 12f else 16f)
             setOnClickPendingIntent(R.id.widget_refresh, refresh)
-            setViewVisibility(R.id.widget_refresh, if (size.width < 100) View.GONE else View.VISIBLE)
-            setTextViewText(R.id.widget_title, if (size.width < 120) "Today" else "Activity · Today")
-            val loggedLabel = if (data.logged == 1) "habit" else "habits"
-            val openedLabel = if (data.opened == 1) "app" else "apps"
+            setViewVisibility(R.id.widget_refresh, if (size.width < 180 || size.height < 100) View.GONE else View.VISIBLE)
+            setTextViewText(R.id.widget_title, "Today")
             setTextViewText(R.id.widget_summary, if (size.width < 120) "${data.logged} logged"
-                else "${data.logged} $loggedLabel logged · ${data.opened} $openedLabel opened\n${data.usageSummary}")
+                else "${data.logged} logged · ${data.opened} opened")
             setViewVisibility(R.id.widget_chart, if (compact) View.GONE else View.VISIBLE)
-            setViewVisibility(R.id.widget_limits, if (compact) View.GONE else View.VISIBLE)
-            setViewVisibility(R.id.widget_updated, if (size.height < 100) View.GONE else View.VISIBLE)
+            setViewVisibility(R.id.widget_limits, if (spacious && data.limits.isNotBlank()) View.VISIBLE else View.GONE)
+            setViewVisibility(R.id.widget_updated, if (size.height >= 120 && size.width >= 180) View.VISIBLE else View.GONE)
             if (!compact) {
                 setImageViewBitmap(R.id.widget_chart, activityChart(context, data, size.width))
                 setContentDescription(R.id.widget_chart, data.chartDescription)
                 setTextViewText(R.id.widget_limits, data.limits)
             }
-            setTextViewText(R.id.widget_updated, "Updated ${data.updated} · Tap to open")
+            setTextViewText(R.id.widget_updated, if (compact) data.usageSummary else "Updated ${data.updated}")
         }
     }
 

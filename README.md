@@ -24,6 +24,8 @@ Start a bedtime session manually or with an existing Focus NFC tag. The session 
 
 ## Appearance
 
+Version 2.6 groups Setup into **Reminders**, **Tags**, **Permissions** and **App** categories. Sleep plan explanations expand through **About this plan**. Widget detail adapts to available space: compact Activity widgets show daily totals, medium widgets add the seven-day chart, and tall widgets can show daily limits. Open Activity in the app for the complete dashboard.
+
 Tapwell uses Jetpack Compose Material 3 with the phone’s dynamic colors and light or dark appearance.
 
 Tapwell follows device colors by default. Its **Follow device** launcher icon uses plum and lime in standard mode and lets supported launchers tint the mark when themed icons are enabled. On Galaxy phones, the launcher switch is **Wallpaper and style → Color palette → Apply palette to app icons**.
