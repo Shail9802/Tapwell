@@ -83,4 +83,3 @@ Use app-private storage and existing helpers. Do not enable Android backup indis
 - Direct Samsung support is gated by a separately supplied licensed SDK and exact package/certificate partner approval. Do not set `tapwellSamsungApproved=true` based on an application having been submitted or an old conversation. Check actual approval before public distribution.
 - `tapwellSamsungSdk` selects the Samsung source set; normal OSS builds select the stub and remain independent of the proprietary AAR. Never commit the AAR, partner access codes, downloaded agreements containing private information or local development artifacts.
 - Event retention currently preserves pending entries and recent history; pruning occurs on new logging, not an exact scheduled purge. Local journal deletion, disconnect, sign-out and external-record deletion have different effects. Keep disclosures and privacy operations in sync with code.
-
