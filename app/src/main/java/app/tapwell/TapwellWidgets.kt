@@ -162,16 +162,20 @@ internal object TapwellWidgets {
         val selected = settings.selected(id).orEmpty().mapNotNull(store::habit)
         val columns = options.getInt("semAppWidgetColumnSpan", 0)
         val rows = options.getInt("semAppWidgetRowSpan", 0)
-        val grid = if (columns in 1..6 && rows in 1..6) HabitWidgetGrid(columns, rows)
+        val space = if (columns in 1..6 && rows in 1..6) HabitWidgetGrid(columns, rows)
             else habitWidgetGrid(size.width, size.height, settings.cellWidth(id), settings.cellHeight(id))
-        val header = grid.rows > 1 && size.width >= 200 && size.height >= 180
-        val pageHeight = (size.height - 12 - if (header) 32 else 0).coerceAtLeast(36f)
+        val grid = filledHabitGrid(space, selected.size)
+        val header = false // Launcher Edit remains available; the content gets the whole surface.
+        val inset = if (size.width < 90 || size.height < 90) 8 else 16
+        val pageHeight = (size.height - 2 * inset).coerceAtLeast(28f)
         val configure = PendingIntent.getActivity(context, id,
             Intent(context, HabitWidgetConfiguration::class.java)
                 .setData(Uri.parse("tapwell-widget://configure/$id"))
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return RemoteViews(context.packageName, R.layout.widget_habits).apply {
+            val padding = (inset * context.resources.displayMetrics.density).toInt()
+            setViewPadding(R.id.widget_root, padding, padding, padding, padding)
             setViewVisibility(R.id.widget_header, if (header) View.VISIBLE else View.GONE)
             setOnClickPendingIntent(R.id.widget_edit, configure)
             setOnClickPendingIntent(R.id.widget_empty, configure)
@@ -200,6 +204,8 @@ internal object TapwellWidgets {
                     val tile = RemoteViews(context.packageName, R.layout.widget_habit_tile).apply {
                         setViewLayoutHeight(R.id.widget_habit_tile, tileHeight, TypedValue.COMPLEX_UNIT_DIP)
                         setTextViewText(R.id.widget_habit_title, habit.title)
+                        setTextViewTextSize(R.id.widget_habit_title, TypedValue.COMPLEX_UNIT_SP,
+                            if (size.width / grid.columns >= 120 && tileHeight >= 72) 18f else 13f)
                         setTextViewText(R.id.widget_habit_count, text)
                         setViewVisibility(R.id.widget_habit_count, if (tileHeight < 48) View.GONE else View.VISIBLE)
                         setContentDescription(R.id.widget_habit_tile,

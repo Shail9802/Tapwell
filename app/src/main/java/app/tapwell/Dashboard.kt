@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -57,7 +59,7 @@ import java.time.format.DateTimeFormatter
 
 private enum class Tab(val title: String, val symbol: Symbol) {
     FOCUS("Focus", Symbol.LOCK), HABITS("Habits", Symbol.HABITS), SLEEP("Sleep", Symbol.STAND),
-    STATS("Activity", Symbol.TAP), SETUP("Setup", Symbol.SETTINGS)
+    STATS("Activity", Symbol.TAP), SETUP("Settings", Symbol.SETTINGS)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -469,15 +471,18 @@ private fun SetupPage(
     var mealSnoozes by rememberSaveable { mutableStateOf(false) }
     var about by rememberSaveable { mutableStateOf(false) }
     var section by rememberSaveable { mutableStateOf("Reminders") }
-    PageHeading("Setup", "Make Tapwell yours.")
-    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    var advanced by rememberSaveable { mutableStateOf(false) }
+    PageHeading("Settings", "Reminders, tags and your account.")
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("Reminders", "Tags", "Permissions", "App").forEach { name ->
             FilterChip(section == name, { section = name }, label = { Text(name) })
         }
     }
     if (section == "App") {
-    SetupRow("Appearance", "Choose Monet colors and your launcher icon.", "Open", false) { appearance = true }
+    SetupRow("Colors & app icon", "Follow your wallpaper or choose Tapwell’s colors.", "Open", false) { appearance = true }
     if (appearance) AppearanceDialog(activity, dismiss = { appearance = false })
+    TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) "Hide advanced options" else "Advanced device options") }
+    if (advanced) {
     SetupRow("NFC automation", "Set up Samsung routines or direct NFC control.", "Open", false) { nfcAutomation = true }
     if (nfcAutomation) NfcAutomationDialog(activity, dismiss = { nfcAutomation = false })
     SetupRow("Device administration", "Review and activate Tapwell’s Android device-admin status.", "Open", false) {
@@ -485,13 +490,15 @@ private fun SetupPage(
     }
     if (deviceAdministration) DeviceAdministrationDialog(activity, dismiss = { deviceAdministration = false })
     }
+    }
     if (section == "Reminders") {
-    SetupRow("Reminder alerts", "Choose a gentle chime or vibration only, and send a test alert.", "Open", false) { alertSettings = true }
+    SetupRow("Sound & vibration", "Choose how your reminders feel and sound.", "Open", false) { alertSettings = true }
     if (alertSettings) ReminderAlertsDialog(activity, dismiss = { alertSettings = false })
-    SetupRow("Sleep quiet hours", "Pause habit reminders overnight. Default: 22:30–07:00.", "Open",
+    val hours = activity.store.quietHours()
+    SetupRow("Quiet hours", if (hours.enabled) "Reminders pause ${sleepClock(hours.startMinute)}–${sleepClock(hours.endMinute)}." else "Let your reminders rest while you sleep.", "Open",
         activity.store.quietHours().enabled) { quietHours = true }
     if (quietHours) QuietHoursDialog(activity, dismiss = { quietHours = false })
-    SetupRow("Meal snooze", "Pause habit alerts during lunch and dinner.", "Open",
+    SetupRow("Meal breaks", "Pause reminders during lunch and dinner.", "Open",
         activity.store.mealSnoozes().any { it.enabled }) { mealSnoozes = true }
     if (mealSnoozes) MealSnoozeDialog(activity, dismiss = { mealSnoozes = false })
     }
@@ -499,7 +506,7 @@ private fun SetupPage(
     val googleUser = remember(revision) { activity.store.googleUser() }
     SetupRow("Google account", googleUser?.email ?: "Sign in to sync and restore your Tapwell setup.", "Open", googleUser != null) { googleSync = true }
     if (googleSync) GoogleAccountDialog(activity, dismiss = { googleSync = false })
-    SetupRow("Water & health apps", "Optional water export through Health Connect. Check Samsung Health compatibility.", "Open",
+    SetupRow("Water sync", "Send confirmed drinks to a connected health app.", "Open",
         activity.store.waterExportEnabled()) { waterHealth = true }
     if (waterHealth) WaterHealthDialog(activity, dismiss = { waterHealth = false })
     }
@@ -516,17 +523,17 @@ private fun SetupPage(
     }
     }
     if (section == "Permissions") {
-    SetupRow("Accessibility", "Detects locked apps and the visible Shorts player on your phone.", "Open", blocker) {
+    SetupRow("App blocking", if (blocker) "Enabled in Android Accessibility." else "Allow Tapwell to detect and block Focus apps.", "Open", blocker) {
         activity.openSettings(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
-    SetupRow("NFC", "Reads the tag held to the back of your phone while the scanner is open.", "Open", nfc) {
+    SetupRow("NFC scanning", if (nfc) "NFC is on and ready to scan." else "Turn on NFC to scan your habit and Focus tags.", "Open", nfc) {
         activity.openSettings(Intent(Settings.ACTION_NFC_SETTINGS))
     }
-    SetupRow("Notifications", "Shows water and stand reminders.", "Open", notify, activity::requestNotifications)
-    SetupRow("Exact alarms", "Improves reminder timing. Android can still delay retries while idle.", "Open", alarms) {
+    SetupRow("Notifications", if (notify) "Habit notifications are allowed." else "Allow habit reminders in your notification shade.", "Open", notify, activity::requestNotifications)
+    SetupRow("Reminder timing", "Allow Android to schedule reminders accurately.", "Open", alarms) {
         activity.openSettings(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${activity.packageName}")))
     }
-    SetupRow("Reminder pop-ups", "Allow Tapwell to show the reminder screen over apps and on the lock screen.", "Open", popups) {
+    SetupRow("Pop-up reminders", "Show the scan prompt over apps and the lock screen.", "Open", popups) {
         activity.openSettings(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${activity.packageName}")))
     }
     }
@@ -538,12 +545,13 @@ private fun SetupPage(
 
 @Composable
 private fun SetupRow(title: String, detail: String, action: String, ready: Boolean, onClick: () -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.large) {
+    Surface(color = MaterialTheme.colorScheme.surface) {
         ListItem(
+            modifier = Modifier.clickable(onClickLabel = action, onClick = onClick),
             headlineContent = { Text(title) },
-            supportingContent = { Text(if (ready) "Ready · $detail" else detail, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
-            trailingContent = { TextButton(onClick = onClick) { Text(action) } },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+            supportingContent = { Text(detail, style = MaterialTheme.typography.bodyMedium) },
+            trailingContent = { Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)
         )
     }
 }

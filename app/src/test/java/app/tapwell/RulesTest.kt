@@ -16,6 +16,10 @@ class RulesTest {
 
     @Test
     fun widgetsExpandFromOneHabitToRowsAndColumns() {
+        assertEquals(HabitWidgetGrid(1, 1), filledHabitGrid(HabitWidgetGrid(4, 2), 1))
+        assertEquals(HabitWidgetGrid(2, 1), filledHabitGrid(HabitWidgetGrid(4, 2), 2))
+        assertEquals(HabitWidgetGrid(1, 2), filledHabitGrid(HabitWidgetGrid(1, 4), 2))
+        assertEquals(HabitWidgetGrid(2, 2), filledHabitGrid(HabitWidgetGrid(2, 2), 8))
         assertEquals(1, habitWidgetGrid(64f, 80f, 80f, 96f).capacity)
         assertEquals(2, habitWidgetGrid(144f, 80f, 80f, 96f).capacity)
         assertEquals(4, habitWidgetGrid(144f, 176f, 80f, 96f).capacity)
