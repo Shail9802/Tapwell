@@ -34,11 +34,12 @@ internal fun ClockFormatSetting() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("tapwell", 0) }
     var format by remember { mutableStateOf(prefs.getString("clock_format", "system")) }
-    Text("Time format", style = MaterialTheme.typography.titleMedium)
+    UiSection("Time format") {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("system" to "Device", "12" to "12-hour", "24" to "24-hour").forEach { (id, label) ->
             FilterChip(format == id, { format = id; prefs.edit().putString("clock_format", id).apply() }, label = { Text(label) })
         }
+    }
     }
 }
 

@@ -134,7 +134,7 @@ internal object TapwellWidgets {
         for (id in habits) {
             val options = manager.getAppWidgetOptions(id)
             val sizes = sizes(options)
-            manager.updateAppWidget(id, RemoteViews(sizes.associateWith { habitViews(app, id, it, options) }))
+            manager.updateAppWidget(id, RemoteViews(sizes.associateWith { habitViews(app, id, it, options, 120_000 / sizes.size) }))
         }
         if (activity.isNotEmpty()) {
             val data = WidgetActivityData.read(app)
@@ -158,7 +158,7 @@ internal object TapwellWidgets {
         ).distinct()
     }
 
-    private fun habitViews(context: Context, id: Int, size: SizeF, options: Bundle): RemoteViews {
+    private fun habitViews(context: Context, id: Int, size: SizeF, options: Bundle, framePixels: Int): RemoteViews {
         val settings = HabitWidgetSettings(context)
         val store = Store.get(context)
         val selected = settings.selected(id).orEmpty().mapNotNull(store::habit)
@@ -216,8 +216,7 @@ internal object TapwellWidgets {
                         else "$logged logged"
                     val tile = RemoteViews(context.packageName, R.layout.widget_habit_tile).apply {
                         setViewLayoutHeight(R.id.widget_habit_tile, tileHeight, TypedValue.COMPLEX_UNIT_DIP)
-                        setImageViewBitmap(R.id.widget_habit_fill, habitFill(context, size.width / grid.columns, tileHeight, progress,
-                            if (selected.size == 1) 32f else 20f))
+                        addWaterFrames(context, this, size.width / grid.columns, tileHeight, progress, if (selected.size == 1) 32f else 20f, framePixels * 12 / (selected.size + 11))
                         setTextViewText(R.id.widget_habit_title, habit.title)
                         setTextViewTextSize(R.id.widget_habit_title, TypedValue.COMPLEX_UNIT_SP,
                             if (selected.size == 1 && tileHeight >= 100) 24f else if (size.width / grid.columns >= 120 && tileHeight >= 72) 18f else 13f)
@@ -236,10 +235,31 @@ internal object TapwellWidgets {
         }
     }
 
-    /** Drawn on update, not a continuous animation: wave height represents actual confirmed intake. */
-    private fun habitFill(context: Context, width: Float, height: Float, progress: Float?, corner: Float): Bitmap {
-        val bitmap = Bitmap.createBitmap((width * 1.5f).toInt().coerceIn(48, 240),
-            (height * 1.5f).toInt().coerceIn(32, 180), Bitmap.Config.ARGB_8888)
+    private fun addWaterFrames(context: Context, tile: RemoteViews, width: Float, height: Float, progress: Float?, corner: Float, framePixels: Int = 120_000) {
+        val reduced = android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+        val saving = context.getSystemService(android.os.PowerManager::class.java).isPowerSaveMode
+        val frames = if (progress != null && progress > 0 && progress < 1 && !reduced && !saving) 12 else 1
+        tile.removeAllViews(R.id.widget_habit_fill)
+        repeat(frames) { index ->
+            val frame = RemoteViews(context.packageName, R.layout.widget_water_frame)
+            frame.setImageViewBitmap(R.id.widget_wave_frame, habitFill(context, width, height, progress, corner, index * 2f * Math.PI.toFloat() / frames, framePixels))
+            tile.addView(R.id.widget_habit_fill, frame)
+        }
+    }
+
+    /** Preview uses sample values only; it never changes the diary or export queue. */
+    fun waterMotionPreview(context: Context): RemoteViews = RemoteViews(context.packageName, R.layout.widget_habit_tile).apply {
+        addWaterFrames(context, this, 280f, 140f, 2f / 3, 28f)
+        setTextViewText(R.id.widget_habit_title, "Water · Preview")
+        setTextViewText(R.id.widget_habit_count, "2 L / 3 L")
+        setTextViewText(R.id.widget_habit_status, "Sample progress")
+    }
+
+    private fun habitFill(context: Context, width: Float, height: Float, progress: Float?, corner: Float, phase: Float, framePixels: Int): Bitmap {
+        // Share a fixed pixel budget across responsive variants; common launcher sizes stay crisp.
+        val scale = minOf(2f, kotlin.math.sqrt(framePixels / (width * height).coerceAtLeast(1f)))
+        val bitmap = Bitmap.createBitmap((width * scale).toInt().coerceAtLeast(1),
+            (height * scale).toInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val w = bitmap.width.toFloat()
         val h = bitmap.height.toFloat()
@@ -250,12 +270,12 @@ internal object TapwellWidgets {
         canvas.drawRect(0f, 0f, w, h, paint)
         if (progress != null && progress > 0f) {
             val level = h * (1f - progress)
-            val amplitude = minOf(5f, h * progress / 2, h * (1 - progress) / 2)
+            val amplitude = minOf(h * .05f, h * progress / 2, h * (1 - progress) / 2)
             for (layer in 0..1) {
                 val wave = Path().apply {
                     moveTo(0f, h)
                     for (x in 0..bitmap.width step 2) {
-                        val y = level + kotlin.math.sin(x / w * Math.PI * 2 + layer * 1.5).toFloat() * amplitude
+                        val y = level + kotlin.math.sin(x / w * Math.PI * 2 + layer * 1.5 + phase).toFloat() * amplitude
                         lineTo(x.toFloat(), y)
                     }
                     lineTo(w, level); lineTo(w, h); close()

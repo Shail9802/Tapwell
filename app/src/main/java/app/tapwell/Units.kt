@@ -78,15 +78,16 @@ internal fun RegionalUnitsSetting() {
     var menu by remember { mutableStateOf(false) }
     val deviceCountry = context.resources.configuration.locales[0].country
     fun name(code: String) = Locale("", code).getDisplayCountry(context.resources.configuration.locales[0])
-    Text("Region & units", style = MaterialTheme.typography.titleMedium)
+    UiSection("Region & units") {
     Text("Uses your phone’s region by default. No location permission needed.", style = MaterialTheme.typography.bodySmall)
-    TextButton(onClick = { countries = true }) { Text("Country · ${country?.let(::name) ?: "Device (${name(deviceCountry)})"} ▾") }
+    PreferenceValue("Country", country?.let(::name) ?: "Device · ${name(deviceCountry)}", { countries = true })
     Box {
         val names = mapOf("auto" to "Regional default", "metric" to "Metric · mL, L, metres", "us" to "US customary · US fl oz, feet", "imperial" to "Imperial · Imp fl oz, feet")
-        TextButton(onClick = { menu = true }) { Text("${names[system]} ▾") }
+        PreferenceValue("Measurement system", names[system] ?: "Regional default", { menu = true })
         DropdownMenu(menu, { menu = false }) { names.forEach { (id, title) -> DropdownMenuItem(text = { Text(title) }, onClick = {
             system = id; prefs.edit().putString("units_system", id).apply(); menu = false
         }) } }
+    }
     }
     if (countries) {
         var search by remember { mutableStateOf("") }

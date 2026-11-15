@@ -1,5 +1,8 @@
 package app.tapwell
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,11 +53,12 @@ internal fun ActivityChart(
     }
     val peak = values.maxOf { it.max() }.coerceAtLeast(1)
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.extraLarge) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             if (dates.size == 1) {
                 for ((index, metric) in metrics.withIndex()) {
                     val count = values.single()[index]
+                    val fraction by animateFloatAsState(count.toFloat() / peak, spring(dampingRatio = 1f, stiffness = 160f), label = "activity count")
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(metric.label, style = MaterialTheme.typography.bodyMedium)
@@ -64,7 +68,7 @@ internal fun ActivityChart(
                             Modifier.fillMaxWidth().height(6.dp).clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                         ) {
-                            Box(Modifier.fillMaxWidth(count.toFloat() / peak).fillMaxHeight().background(metric.color))
+                            Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(metric.color))
                         }
                     }
                 }
@@ -75,9 +79,10 @@ internal fun ActivityChart(
                 Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                     for ((index, date) in dates.withIndex()) {
                         val isSelected = index == selected
+                        val selectionColor by animateColorAsState(if (isSelected) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent, label = "activity selection")
                         Column(
                             Modifier.weight(1f).clip(MaterialTheme.shapes.small)
-                                .background(if (isSelected) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent)
+                                .background(selectionColor)
                                 .selectable(isSelected, role = Role.Tab, onClick = { selected = index })
                                 .semantics {
                                     contentDescription = date.format(fullLabel) + ", " +
@@ -93,7 +98,7 @@ internal fun ActivityChart(
                                     verticalAlignment = Alignment.Bottom
                                 ) {
                                     for ((metricIndex, metric) in metrics.withIndex()) {
-                                        val height = values[index][metricIndex].toFloat() / peak
+                                        val height by animateFloatAsState(values[index][metricIndex].toFloat() / peak, spring(dampingRatio = 1f, stiffness = 160f), label = "activity bar")
                                         Box(
                                             Modifier.weight(1f).fillMaxHeight(height)
                                                 .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
@@ -102,7 +107,6 @@ internal fun ActivityChart(
                                     }
                                 }
                             }
-                            HorizontalDivider()
                             Text(date.format(dayLabel), style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
                     }

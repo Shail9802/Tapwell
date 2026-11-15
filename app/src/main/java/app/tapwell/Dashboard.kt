@@ -6,6 +6,10 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -60,6 +64,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.time.Instant
@@ -101,10 +106,12 @@ internal fun Dashboard(activity: MainActivity) {
         bottomBar = {
             NavigationBar {
                 Tab.entries.forEach { item ->
+                    val iconScale by animateFloatAsState(if (tab == item) 1.08f else 1f,
+                        spring(dampingRatio = .65f, stiffness = 450f), label = "navigation icon")
                     NavigationBarItem(
                         selected = tab == item,
                         onClick = { tab = item },
-                        icon = { TapIcon(item.symbol) },
+                        icon = { TapIcon(item.symbol, Modifier.graphicsLayer { scaleX = iconScale; scaleY = iconScale }) },
                         label = { Text(item.title) }
                     )
                 }
@@ -443,10 +450,13 @@ private fun HabitCard(activity: MainActivity, habit: Habit, now: Long, onConfigu
     }
     FeatureCard(symbol, habit.title, status, habit == Habit.WATER) {
         if (habit == Habit.WATER) {
+            val waterProgress by animateFloatAsState((state.loggedMl.toFloat() / settings.goalMl).coerceIn(0f, 1f),
+                spring(dampingRatio = 1f, stiffness = 120f), label = "water progress")
             Text(waterAmount(activity, state.loggedMl), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
             Text("of ${waterAmount(activity, settings.goalMl)} today", style = MaterialTheme.typography.bodyLarge)
             LinearWavyProgressIndicator(
-                progress = { (state.loggedMl.toFloat() / settings.goalMl).coerceIn(0f, 1f) },
+                progress = { waterProgress },
+                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .18f),
                 modifier = Modifier.fillMaxWidth()
             )
             val servings = (settings.goalMl + settings.servingMl - 1) / settings.servingMl
@@ -488,11 +498,13 @@ private fun SetupPage(
     var advanced by rememberSaveable { mutableStateOf(false) }
     PageHeading("Settings", "Reminders, tags and your account.")
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("Reminders", "Tags", "Permissions", "App").forEach { name ->
+        listOf("Reminders", "Tags", "Access", "App").forEach { name ->
             FilterChip(section == name, { section = name }, label = { Text(name) })
         }
     }
-    if (section == "App") {
+    Crossfade(section, animationSpec = tween(180), label = "settings section") { visibleSection ->
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    if (visibleSection == "App") {
     ClockFormatSetting()
     RegionalUnitsSetting()
     SetupRow("Colors & app icon", "Follow your wallpaper or choose Tapwell’s colors.", "Open", false) { appearance = true }
@@ -507,7 +519,7 @@ private fun SetupPage(
     if (deviceAdministration) DeviceAdministrationDialog(activity, dismiss = { deviceAdministration = false })
     }
     }
-    if (section == "Reminders") {
+    if (visibleSection == "Reminders") {
     SetupRow("Sound & vibration", "Choose how your reminders feel and sound.", "Open", false) { alertSettings = true }
     if (alertSettings) ReminderAlertsDialog(activity, dismiss = { alertSettings = false })
     val hours = activity.store.quietHours()
@@ -518,7 +530,7 @@ private fun SetupPage(
         activity.store.mealSnoozes().any { it.enabled }) { mealSnoozes = true }
     if (mealSnoozes) MealSnoozeDialog(activity, dismiss = { mealSnoozes = false })
     }
-    if (section == "App") {
+    if (visibleSection == "App") {
     val googleUser = remember(revision) { activity.store.googleUser() }
     SetupRow("Google account", googleUser?.email ?: "Sign in to sync and restore your Tapwell setup.", "Open", googleUser != null) { googleSync = true }
     if (googleSync) GoogleAccountDialog(activity, dismiss = { googleSync = false })
@@ -526,7 +538,7 @@ private fun SetupPage(
         activity.store.waterExportEnabled()) { waterHealth = true }
     if (waterHealth) WaterHealthDialog(activity, dismiss = { waterHealth = false })
     }
-    if (section == "Tags") {
+    if (visibleSection == "Tags") {
     TagRole.entries.forEach { role ->
         val count = remember(revision, role) { activity.store.tags(role.slot).size }
         val detail = when (role) {
@@ -538,7 +550,7 @@ private fun SetupPage(
         SetupRow("${role.title} tags", status, if (count > 0) "Manage" else "Pair", count > 0) { manageTags(role.slot) }
     }
     }
-    if (section == "Permissions") {
+    if (visibleSection == "Access") {
     SetupRow("App blocking", if (blocker) "Enabled in Android Accessibility." else "Allow Tapwell to detect and block Focus apps.", "Open", blocker) {
         activity.openSettings(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
@@ -553,24 +565,20 @@ private fun SetupPage(
         activity.openSettings(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${activity.packageName}")))
     }
     }
-    if (section == "App") {
+    if (visibleSection == "App") {
     SetupRow("About", "Meet the developer and find Tapwell’s source code.", "Open", false) { about = true }
     if (about) AboutDialog(activity, dismiss = { about = false })
+    }
+    }
     }
 }
 
 @Composable
 private fun SetupRow(title: String, detail: String, action: String, ready: Boolean, onClick: () -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = RoundedCornerShape(16.dp)) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = RoundedCornerShape(28.dp)) {
         ListItem(
-            modifier = Modifier.clickable(onClickLabel = action, onClick = onClick),
-            headlineContent = { Text(title) },
-            leadingContent = { TapIcon(when {
-                title.contains("Water") -> Symbol.WATER
-                title.contains("tag", true) || title.contains("NFC") -> Symbol.TAP
-                title.contains("blocking") -> Symbol.LOCK
-                else -> Symbol.SETTINGS
-            }) },
+            modifier = Modifier.clickable(onClickLabel = action, onClick = onClick).padding(horizontal = 4.dp, vertical = 8.dp),
+            headlineContent = { Text(title, style = MaterialTheme.typography.titleMedium) },
             supportingContent = { Text(detail, style = MaterialTheme.typography.bodyMedium) },
             trailingContent = { Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
@@ -579,8 +587,8 @@ private fun SetupRow(title: String, detail: String, action: String, ready: Boole
 }
 
 @Composable
-private fun PageHeading(title: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+internal fun PageHeading(title: String, body: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
         Text(title, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
         Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -600,9 +608,10 @@ private fun FeatureCard(
             containerColor = if (emphasized) colors.primaryContainer else colors.surfaceContainerLow,
             contentColor = if (emphasized) colors.onPrimaryContainer else colors.onSurface
         ),
-        shape = MaterialTheme.shapes.extraLarge
+        shape = MaterialTheme.shapes.extraLarge,
+        modifier = Modifier.animateContentSize(spring(stiffness = 400f))
     ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 IconBadge(symbol, prominent = emphasized)
                 Text(title, style = MaterialTheme.typography.titleMedium)

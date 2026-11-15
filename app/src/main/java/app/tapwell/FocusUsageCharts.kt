@@ -2,6 +2,11 @@ package app.tapwell
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -61,7 +66,7 @@ internal fun FocusUsageCharts(activity: MainActivity, targets: Set<String>, date
         }
     }
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.extraLarge) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().animateContentSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Focus app usage", style = MaterialTheme.typography.titleMedium)
             val usage = history
             when {
@@ -122,9 +127,12 @@ private fun UsageWeek(dates: List<LocalDate>, totals: List<Long?>, selected: Int
         for ((index, date) in dates.withIndex()) {
             val used = totals[index]
             val active = index == selected
+            val selectionColor by animateColorAsState(if (active) colors.surfaceContainerHigh else Color.Transparent, tween(180), label = "chart selection")
+            val barColor by animateColorAsState(if (active) colors.primary else colors.secondary, tween(180), label = "bar color")
+            val fraction by animateFloatAsState(((used ?: 0).toFloat() / peak).coerceIn(0.03f, 1f), spring(dampingRatio = 1f, stiffness = 160f), label = "usage bar")
             Column(
                 Modifier.weight(1f).clip(MaterialTheme.shapes.small)
-                    .background(if (active) colors.surfaceContainerHigh else Color.Transparent)
+                    .background(selectionColor)
                     .selectable(active, role = Role.Tab, onClick = { select(index) })
                     .semantics {
                         contentDescription = "${date.format(usageDay)}, ${used?.let(::usageDuration) ?: "no usage data"}"
@@ -134,12 +142,11 @@ private fun UsageWeek(dates: List<LocalDate>, totals: List<Long?>, selected: Int
                 Box(Modifier.fillMaxWidth().height(76.dp), contentAlignment = Alignment.BottomCenter) {
                     if (used != null && used > 0) {
                         Box(
-                            Modifier.fillMaxWidth(0.65f).fillMaxHeight((used.toFloat() / peak).coerceAtLeast(0.03f))
-                                .background(if (active) colors.primary else colors.secondary, MaterialTheme.shapes.small)
+                            Modifier.fillMaxWidth(0.65f).fillMaxHeight(fraction)
+                                .background(barColor, MaterialTheme.shapes.small)
                         )
                     }
                 }
-                HorizontalDivider()
                 Text(date.format(usageWeekday), style = MaterialTheme.typography.labelSmall, maxLines = 1)
             }
         }
@@ -152,6 +159,7 @@ private fun UsageDonut(usage: Map<String, Long>, label: (String) -> String) {
     val palette = listOf(colors.primary, colors.tertiary, colors.secondary, colors.error, colors.outline)
     val apps = usage.filterValues { it > 0 }.entries.sortedByDescending { it.value }
     val total = apps.sumOf { it.value }
+    val animatedTotal by animateFloatAsState(total.toFloat(), spring(dampingRatio = 1f, stiffness = 140f), label = "usage distribution")
     val breakdown = apps.take(if (apps.size > palette.size) palette.size - 1 else palette.size)
         .map { label(it.key) to it.value }.toMutableList()
     if (apps.size > palette.size) {
@@ -163,7 +171,7 @@ private fun UsageDonut(usage: Map<String, Long>, label: (String) -> String) {
                 val stroke = 13.dp.toPx()
                 var angle = -90f
                 for ((index, item) in breakdown.withIndex()) {
-                    val sweep = 360f * item.second / total
+                    val sweep = 360f * item.second / total * (animatedTotal / total.coerceAtLeast(1)).coerceIn(0f, 1f)
                     drawArc(
                         color = palette[index], startAngle = angle, sweepAngle = sweep, useCenter = false,
                         topLeft = Offset(stroke / 2, stroke / 2),
@@ -193,10 +201,11 @@ private fun UsageDonut(usage: Map<String, Long>, label: (String) -> String) {
 private fun LimitBar(label: String, used: Long, cap: Long) {
     val colors = MaterialTheme.colorScheme
     val left = cap - used
+    val progress by animateFloatAsState((used.toFloat() / cap).coerceIn(0f, 1f), spring(dampingRatio = 1f, stiffness = 160f), label = "daily limit")
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
         LinearProgressIndicator(
-            progress = { (used.toFloat() / cap).coerceIn(0f, 1f) },
+            progress = { progress },
             modifier = Modifier.fillMaxWidth(),
             color = if (left > 0) colors.primary else colors.error
         )

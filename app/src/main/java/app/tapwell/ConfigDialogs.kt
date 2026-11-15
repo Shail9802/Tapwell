@@ -4,8 +4,10 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +16,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -228,6 +232,7 @@ internal fun HabitDialog(
     var servingMl by rememberSaveable { mutableStateOf<Int?>(settings.servingMl) }
     val unitContext = androidx.compose.ui.platform.LocalContext.current
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    var extraReminder by remember { mutableStateOf(false) }
     val valid = title.isNotBlank() && intervalSeconds != null && goalMl != null && servingMl != null &&
         (!repeats || repeatSeconds != null)
     if (confirmDelete) {
@@ -245,7 +250,7 @@ internal fun HabitDialog(
         title = { Text(if (habit == null) "Add habit" else if (custom) "Edit habit" else "${habit.title} reminders") },
         text = {
             Column(
-                Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
+                Modifier.animateContentSize().heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (custom) {
@@ -261,10 +266,12 @@ internal fun HabitDialog(
                 ToggleRow("Reminders on", enabled, custom || paired) { enabled = it }
                 if (habit != null) TextButton(onClick = test) { Text("Send test alert") }
                 if (systemReminders.isNotEmpty()) {
-                    Text("Optional extra reminder", style = MaterialTheme.typography.titleSmall)
-                    Text("Tapwell still tracks completion. Save the extra reminder in the app you choose.",
-                        style = MaterialTheme.typography.bodySmall)
-                    for ((label, open) in systemReminders) TextButton(onClick = open) { Text(label) }
+                    Box {
+                        TextButton(onClick = { extraReminder = true }) { Text("Use another reminder app") }
+                        DropdownMenu(extraReminder, { extraReminder = false }) {
+                            for ((label, open) in systemReminders) DropdownMenuItem(text = { Text(label) }, onClick = { extraReminder = false; open() })
+                        }
+                    }
                 }
                 if (custom) ToggleRow("Require NFC tag", needsNfc) { needsNfc = it }
                 if (needsNfc && !paired) {

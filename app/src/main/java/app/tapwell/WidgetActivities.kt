@@ -10,12 +10,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -50,14 +53,16 @@ class HabitWidgetConfiguration : ComponentActivity() {
             TapTheme {
                 var selected by rememberSaveable { mutableStateOf(ArrayList(initial)) }
                 var saving by remember { mutableStateOf(false) }
+                var preview by remember { mutableStateOf(false) }
                 Surface {
                     Column(
                         Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text("Choose widget habits", style = MaterialTheme.typography.headlineSmall)
-                        Text("NFC habits log as soon as you scan a paired tag from the widget. Direct scans outside the widget ask for confirmation.")
-                        Text("You can log with reminders off. Long-press the widget and choose Edit to change this selection.")
+                        Text("NFC habits log after a paired scan. Direct scans ask for confirmation.", style = MaterialTheme.typography.bodyMedium)
+                        Text("Tracking works with reminders off.", style = MaterialTheme.typography.bodyMedium)
+                        TextButton(onClick = { preview = true }) { Text("Preview water motion") }
                         LazyColumn(Modifier.weight(1f)) {
                             items(habits, key = { it.id }) { habit ->
                                 val checked = habit.id in selected
@@ -89,6 +94,14 @@ class HabitWidgetConfiguration : ComponentActivity() {
                             }
                         ) { Text("Save widget") }
                         TextButton(onClick = ::finish) { Text("Cancel") }
+                        if (preview) AlertDialog(onDismissRequest = { preview = false }, title = { Text("Water widget preview") }, text = {
+                            androidx.compose.ui.viewinterop.AndroidView(modifier = Modifier.fillMaxWidth().height(160.dp), factory = { context ->
+                                android.widget.FrameLayout(context).apply {
+                                    val tile = TapwellWidgets.waterMotionPreview(context).apply(context, this)
+                                    addView(tile, android.widget.FrameLayout.LayoutParams(-1, (160 * context.resources.displayMetrics.density).toInt()))
+                                }
+                            })
+                        }, confirmButton = { TextButton(onClick = { preview = false }) { Text("Done") } })
                     }
                 }
             }
